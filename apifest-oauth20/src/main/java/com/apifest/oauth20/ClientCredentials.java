@@ -20,11 +20,12 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.Map;
 
-import com.apifest.oauth20.utils.JSONUtils;
-import com.apifest.oauth20.utils.RandomGenerator;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonPropertyOrder;
+
+import com.apifest.oauth20.utils.JSONUtils;
+import com.apifest.oauth20.utils.RandomGenerator;
 
 /**
  * Holds client application credentials - client_id and client_secret.
@@ -80,7 +81,7 @@ public class ClientCredentials implements Serializable {
         this.id = generateClientId();
         this.secret = generateClientSecret();
         this.created = (new Date()).getTime();
-        this.status = INACTIVE_STATUS;
+        this.status = ACTIVE_STATUS;
         this.applicationDetails = applicationDetails;
     }
 
@@ -93,7 +94,7 @@ public class ClientCredentials implements Serializable {
         this.id = clientId;
         this.secret = clientSecret;
         this.created = (new Date()).getTime();
-        this.status = INACTIVE_STATUS;
+        this.status = ACTIVE_STATUS;
         this.applicationDetails = applicationDetails;
     }
 
@@ -207,7 +208,8 @@ public class ClientCredentials implements Serializable {
         creds.status = ((Integer) map.get("status")).intValue();
         creds.created = (Long) map.get("created");
         creds.scope = (String) map.get("scope");
-        creds.applicationDetails = JSONUtils.convertStringToMap(map.get("applicationDetails").toString());
+        Object details = map.get("applicationDetails");
+        creds.applicationDetails = details == null ? null : JSONUtils.convertStringToMap(details.toString());
         return creds;
     }
 
