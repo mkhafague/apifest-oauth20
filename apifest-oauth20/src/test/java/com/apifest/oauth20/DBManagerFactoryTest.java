@@ -20,6 +20,7 @@ import static org.mockito.Mockito.mock;
 import static org.testng.Assert.assertTrue;
 
 import com.apifest.oauth20.persistence.DBManager;
+import com.apifest.oauth20.persistence.mongodb.MongoDBManager;
 import org.slf4j.Logger;
 import org.testng.annotations.Test;
 

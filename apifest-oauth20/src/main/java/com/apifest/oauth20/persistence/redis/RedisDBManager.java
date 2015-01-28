@@ -17,7 +17,7 @@
 /**
  * @author Apostol Terziev
  */
-package com.apifest.oauth20;
+package com.apifest.oauth20.persistence.redis;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.apifest.oauth20.*;
 import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.utils.JSONUtils;
 import redis.clients.jedis.Jedis;

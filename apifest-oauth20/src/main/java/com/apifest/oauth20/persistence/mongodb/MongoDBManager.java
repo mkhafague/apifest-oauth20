@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package com.apifest.oauth20;
+package com.apifest.oauth20.persistence.mongodb;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.apifest.oauth20.AccessToken;
+import com.apifest.oauth20.AuthCode;
+import com.apifest.oauth20.ClientCredentials;
+import com.apifest.oauth20.Scope;
 import com.apifest.oauth20.persistence.DBManager;
 import org.bson.BSONObject;
 import org.codehaus.jackson.JsonParseException;

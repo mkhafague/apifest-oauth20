@@ -21,6 +21,8 @@ package com.apifest.oauth20;
 
 import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.persistence.hazelcast.HazelcastDBManager;
+import com.apifest.oauth20.persistence.mongodb.MongoDBManager;
+import com.apifest.oauth20.persistence.redis.RedisDBManager;
 
 public class DBManagerFactory {
 

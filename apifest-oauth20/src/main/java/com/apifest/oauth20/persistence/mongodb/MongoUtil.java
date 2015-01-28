@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package com.apifest.oauth20;
+package com.apifest.oauth20.persistence.mongodb;
 
 import java.net.UnknownHostException;
 
+import com.apifest.oauth20.OAuthServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
