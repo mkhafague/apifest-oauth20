@@ -168,10 +168,9 @@ public class HazelcastDBManager implements DBManager {
     @Override
     public boolean validClient(String clientId, String clientSecret) {
         ClientCredentials clientCredentials = findClientCredentials(clientId);
-        if (clientCredentials != null && clientCredentials.getSecret().equals(clientSecret) && clientCredentials.getStatus() == ClientCredentials.ACTIVE_STATUS) {
-            return true;
-        }
-        return false;
+        return ((clientCredentials != null)
+                && (clientCredentials.getSecret() != null && clientCredentials.getSecret().equals(clientSecret))
+                && (clientCredentials.getStatus() == ClientCredentials.ACTIVE_STATUS));
     }
 
     /*
@@ -207,8 +206,9 @@ public class HazelcastDBManager implements DBManager {
      */
     @Override
     public void storeAccessToken(AccessToken accessToken) {
+        Long tokenExpiration = (accessToken.getRefreshExpiresIn() != null && !accessToken.getRefreshExpiresIn().isEmpty()) ? Long.valueOf(accessToken.getRefreshExpiresIn()) : Long.valueOf(accessToken.getExpiresIn());
         getAccessTokenContainer().put(accessToken.getToken(), PersistenceTransformations.toPersistentAccessToken(accessToken),
-                Integer.valueOf(accessToken.getExpiresIn()), TimeUnit.SECONDS);
+                tokenExpiration, TimeUnit.SECONDS);
     }
 
     /*
@@ -218,7 +218,7 @@ public class HazelcastDBManager implements DBManager {
     @SuppressWarnings("unchecked")
     public AccessToken findAccessTokenByRefreshToken(String refreshToken, String clientId) {
         EntryObject eo = new PredicateBuilder().getEntryObject();
-        Predicate<String, String> predicate = eo.get("refreshTokenByClient").equal(refreshToken + clientId + true);
+        Predicate<String, String> predicate = eo.get("refreshTokenByClient").equal(refreshToken + clientId);
         Collection<PersistentAccessToken> values = getAccessTokenContainer().values(predicate);
         if (values.isEmpty()) {
             return null;
@@ -360,7 +360,7 @@ public class HazelcastDBManager implements DBManager {
     @Override
     public boolean deleteScope(String scopeName) {
         PersistentScope scope = getScopesContainer().remove(scopeName);
-        return (scope != null) ? true : false;
+        return scope != null;
     }
 
     /*
@@ -379,6 +379,11 @@ public class HazelcastDBManager implements DBManager {
             }
         }
         return accessTokens;
+    }
+
+    @Override
+    public void removeAccessToken(String accessToken) {
+        getAccessTokenContainer().remove(accessToken);
     }
 
 }

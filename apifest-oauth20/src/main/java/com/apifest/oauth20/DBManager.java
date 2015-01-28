@@ -56,9 +56,9 @@ public interface DBManager {
     void updateAuthCodeValidStatus(String authCode, boolean valid);
 
     /**
-     * Stores access tokens in the DB.
+     * Stores access token in the DB.
      *
-     * @param authCode that will be stored in the DB
+     * @param accessToken that will be stored in the DB
      */
     void storeAccessToken(AccessToken accessToken);
 
@@ -161,4 +161,12 @@ public interface DBManager {
      * @return {@link List} of {@link AccessToken}
      */
     List<AccessToken> getAccessTokenByUserIdAndClientApp(String userId, String clientId);
+
+    /**
+     * Remove an access token.
+     *
+     * @param accessToken the access token to be removed
+     */
+    void removeAccessToken(String accessToken);
+
 }

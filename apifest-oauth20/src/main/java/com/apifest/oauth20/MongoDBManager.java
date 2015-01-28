@@ -191,7 +191,7 @@ public class MongoDBManager implements DBManager {
         // TODO: add indexes
         dbObject.put(REFRESH_TOKEN_ID_NAME, refreshToken);
         dbObject.put(CLIENTS_ID_NAME, clientId);
-        dbObject.put(VALID_NAME, true);
+        // Searching for unknown validity token -> no VALID query param
         DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
         List<DBObject> list = coll.find(dbObject).toArray();
         if (list != null && list.size() == 1) {
@@ -217,9 +217,8 @@ public class MongoDBManager implements DBManager {
         BasicDBObject dbObject = new BasicDBObject();
         dbObject.put("token", accessToken);
         DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
-        List<DBObject> list = coll.find(dbObject).toArray();
-        if (list.size() > 0) {
-            DBObject newObject = list.get(0);
+        DBObject newObject = coll.find(dbObject).next();
+        if (newObject != null) {
             newObject.put("valid", valid);
             coll.findAndModify(dbObject, newObject);
         }
@@ -233,9 +232,8 @@ public class MongoDBManager implements DBManager {
         BasicDBObject dbObject = new BasicDBObject();
         dbObject.put("code", authCode);
         DBCollection coll = db.getCollection(AUTH_CODE_COLLECTION_NAME);
-        List<DBObject> list = coll.find(dbObject).toArray();
-        if (list.size() > 0) {
-            DBObject newObject = list.get(0);
+        DBObject newObject = coll.find(dbObject).next();
+        if (newObject != null) {
             newObject.put("valid", valid);
             coll.findAndModify(dbObject, newObject);
         }
@@ -427,7 +425,7 @@ public class MongoDBManager implements DBManager {
         DBCollection coll = db.getCollection(SCOPE_COLLECTION_NAME);
         BasicDBObject query = new BasicDBObject(ID_NAME, scopeName);
         WriteResult result = coll.remove(query);
-        return (result.getN() == 1) ? true : false;
+        return (result.getN() == 1);
     }
 
     /*
@@ -457,4 +455,10 @@ public class MongoDBManager implements DBManager {
         return accessTokens;
     }
 
+    @Override
+    public void removeAccessToken(String accessToken) {
+        BasicDBObject dbObject = new BasicDBObject(ACCESS_TOKEN_ID_NAME, accessToken);
+        DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
+        coll.remove(dbObject);
+    }
 }

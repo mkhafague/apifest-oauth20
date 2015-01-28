@@ -55,6 +55,7 @@ public class ScopeService {
     protected static final String SCOPE_DELETED_OK_MESSAGE = "{\"status\":\"scope successfully deleted\"}";
     protected static final String SCOPE_DELETED_NOK_MESSAGE = "{\"status\":\"scope not deleted\"}";
     protected static final String SCOPE_USED_BY_APP_MESSAGE = "{\"status\":\"scope cannot be deleted, there are client apps registered with it\"}";
+
     private static final String SPACE = " ";
 
     /**
@@ -66,7 +67,7 @@ public class ScopeService {
     public String registerScope(HttpRequest req) throws OAuthException {
         String content = req.getContent().toString(CharsetUtil.UTF_8);
         String contentType = (req.headers() != null) ? req.headers().get(HttpHeaders.Names.CONTENT_TYPE) : null;
-        String responseMsg = "";
+
         // check Content-Type
         if (contentType != null && contentType.contains(Response.APPLICATION_JSON)) {
             ObjectMapper mapper = new ObjectMapper();
@@ -85,9 +86,9 @@ public class ScopeService {
                         // store in the DB, if already exists such a scope, overwrites it
                         boolean ok = DBManagerFactory.getInstance().storeScope(scope);
                         if (ok) {
-                            responseMsg = SCOPE_STORED_OK_MESSAGE;
+                            return SCOPE_STORED_OK_MESSAGE;
                         } else {
-                            responseMsg = SCOPE_STORED_NOK_MESSAGE;
+                            return SCOPE_STORED_NOK_MESSAGE;
                         }
                     }
                 } else {
@@ -107,7 +108,6 @@ public class ScopeService {
         } else {
             throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
         }
-        return responseMsg;
     }
 
     /**
@@ -163,8 +163,7 @@ public class ScopeService {
             validScope = storedScope;
         } else {
             // check that scope exists and is allowed for that client app
-            boolean scopeOk = scopeAllowed(scope, storedScope);
-            if(scopeOk) {
+            if(scopeAllowed(scope, storedScope)) {
                 validScope = scope;
             }
         }
@@ -194,8 +193,8 @@ public class ScopeService {
     /**
      * Returns value for expires_in by given scope and token type.
      *
-     * @param scope scope/s for which expires in will be returned
      * @param tokenGrantType client_credentials or password type
+     * @param scope scope/s for which expires in will be returned
      * @return minimum value of given scope/s expires_in
      */
     public int getExpiresIn(String tokenGrantType, String scope) {
@@ -204,15 +203,16 @@ public class ScopeService {
         boolean ccGrantType = TokenRequest.CLIENT_CREDENTIALS.equals(tokenGrantType);
         if (ccGrantType) {
             for (Scope s : scopes) {
-                if (s.getCcExpiresIn() < expiresIn) {
-                    expiresIn = s.getCcExpiresIn();
-                }
+                expiresIn = Math.min(s.getCcExpiresIn(), expiresIn);
+            }
+        } else if (TokenRequest.PASSWORD.equals(tokenGrantType)) {
+            for (Scope s : scopes) {
+                expiresIn = Math.min(s.getPassExpiresIn(), expiresIn);
             }
         } else {
+            // refresh_token
             for (Scope s : scopes) {
-                if (s.getPassExpiresIn() < expiresIn) {
-                    expiresIn = s.getPassExpiresIn();
-                }
+                expiresIn = Math.min(s.getRefreshExpiresIn(), expiresIn);
             }
         }
         if (scopes.size() == 0 || expiresIn == Integer.MAX_VALUE) {
@@ -225,12 +225,13 @@ public class ScopeService {
      * Updates a scope. If the scope does not exists, returns an error.
      *
      * @param req http request
+     * @param scopeName the scope to update
      * @return String message that will be returned in the response
      */
     public String updateScope(HttpRequest req, String scopeName) throws OAuthException {
         String content = req.getContent().toString(CharsetUtil.UTF_8);
         String contentType = (req.headers() != null) ? req.headers().get(HttpHeaders.Names.CONTENT_TYPE) : null;
-        String responseMsg = "";
+        String responseMsg;
         // check Content-Type
         if (contentType != null && contentType.contains(Response.APPLICATION_JSON)) {
             ObjectMapper mapper = new ObjectMapper();
@@ -273,65 +274,57 @@ public class ScopeService {
     /**
      * Deletes a scope. If the scope does not exists, returns an error.
      *
-     * @param req http request
+     * @param scopeName the scope to delete
      * @return String message that will be returned in the response
      */
     public String deleteScope(String scopeName) throws OAuthException {
-        String responseMsg = "";
         Scope foundScope = DBManagerFactory.getInstance().findScope(scopeName);
         if (foundScope == null) {
             log.error("scope does not exist");
             throw new OAuthException(SCOPE_NOT_EXIST, HttpResponseStatus.BAD_REQUEST);
         } else {
             // first, check whether there is a client app registered with that scope
-            List<ClientCredentials> registeredApps = getClientAppsByScope(scopeName);
-            if (registeredApps.size() > 0) {
-                responseMsg = SCOPE_USED_BY_APP_MESSAGE;
+            if (checkForClientAppByScope(scopeName)) {
+                return SCOPE_USED_BY_APP_MESSAGE;
             } else {
-                boolean ok = DBManagerFactory.getInstance().deleteScope(scopeName);
-                if (ok) {
-                    responseMsg = SCOPE_DELETED_OK_MESSAGE;
+                if (DBManagerFactory.getInstance().deleteScope(scopeName)) {
+                    return SCOPE_DELETED_OK_MESSAGE;
                 } else {
-                    responseMsg = SCOPE_DELETED_NOK_MESSAGE;
+                    return SCOPE_DELETED_NOK_MESSAGE;
                 }
             }
         }
-        return responseMsg;
     }
 
     public String getScopeByName(String scopeName) throws OAuthException {
-        String jsonString = null;
         Scope scope = DBManagerFactory.getInstance().findScope(scopeName);
         if (scope != null) {
             ObjectMapper mapper = new ObjectMapper();
             try {
-                jsonString = mapper.writeValueAsString(scope);
+                return mapper.writeValueAsString(scope);
             } catch (JsonGenerationException e) {
-                log.error("cannot load scopes", e);
+                log.error("cannot load scope", e);
                 throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
-                log.error("cannot load scopes", e);
+                log.error("cannot load scope", e);
                 throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
-                log.error("cannot load scopes", e);
+                log.error("cannot load scope", e);
                 throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
             throw new OAuthException(SCOPE_NOT_EXIST, HttpResponseStatus.NOT_FOUND);
         }
-        return jsonString;
     }
 
-    protected List<ClientCredentials> getClientAppsByScope(String scopeName) {
-        List<ClientCredentials> scopeApps = new ArrayList<ClientCredentials>();
+    protected boolean checkForClientAppByScope(String scopeName) {
         List<ClientCredentials> allApps = DBManagerFactory.getInstance().getAllApplications();
         for (ClientCredentials app : allApps) {
             if (app.getScope().contains(scopeName)) {
-                scopeApps.add(app);
-                break;
+                return true;
             }
         }
-        return scopeApps;
+        return false;
     }
 
     protected void setScopeEmptyValues(Scope scope, Scope foundScope) {
@@ -345,6 +338,9 @@ public class ScopeService {
         }
         if (scope.getPassExpiresIn() == null) {
             scope.setPassExpiresIn(foundScope.getPassExpiresIn());
+        }
+        if (scope.getRefreshExpiresIn() == null) {
+            scope.setRefreshExpiresIn(foundScope.getRefreshExpiresIn());
         }
     }
 

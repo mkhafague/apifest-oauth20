@@ -32,11 +32,11 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
  *
  * @author Rossitsa Borissova
  */
-@JsonPropertyOrder({ "access_token", "refresh_token", "token_type", "expires_in" })
+@JsonPropertyOrder({ "access_token", "refresh_token", "token_type", "expires_in", "refresh_expires_in" })
 @JsonSerialize(include = Inclusion.NON_EMPTY)
 public class AccessToken implements Serializable {
 
-    private static final long serialVersionUID = 4322523635887085378L;
+    private static final long serialVersionUID = -7359543268890655994L;
 
     @JsonProperty("access_token")
     private String token = "";
@@ -54,6 +54,9 @@ public class AccessToken implements Serializable {
 
     @JsonProperty("scope")
     private String scope = "";
+
+    @JsonProperty("refresh_expires_in")
+    private String refreshExpiresIn = "";
 
     @JsonIgnore
     private boolean valid;
@@ -79,29 +82,52 @@ public class AccessToken implements Serializable {
      * @param tokenType
      * @param expiresIn
      * @param scope
+     * @param refreshExpiresIn
      */
-    public AccessToken(String tokenType, String expiresIn, String scope) {
-        this(tokenType, expiresIn, scope, true);
+    public AccessToken(String tokenType, String expiresIn, String scope, String refreshExpiresIn) {
+        this(tokenType, expiresIn, scope, true, refreshExpiresIn);
     }
 
     /**
-     * Creates access token. Used for generation of client_credentials type tokens with not refreshToken.
+     * Creates access token. Used for generation of client_credentials type tokens with no refreshToken.
      *
      * @param tokenType
      * @param expiresIn
      * @param scope
      * @param createRefreshToken
+     * @param refreshExpiresIn
      */
-    public AccessToken(String tokenType, String expiresIn, String scope, boolean createRefreshToken) {
+    public AccessToken(String tokenType, String expiresIn, String scope, boolean createRefreshToken, String refreshExpiresIn) {
         this.token = RandomGenerator.generateRandomString();
         if (createRefreshToken) {
             this.refreshToken = RandomGenerator.generateRandomString();
+            this.refreshExpiresIn = (refreshExpiresIn != null && !refreshExpiresIn.isEmpty())? refreshExpiresIn : expiresIn;
         }
         this.expiresIn = expiresIn;
         this.type = tokenType;
         this.scope = scope;
         this.valid = true;
-        this.created = (new Date()).getTime();
+        this.created = System.currentTimeMillis();
+    }
+
+    /**
+     * Creates access token with already generated refresh token.
+     *
+     * @param tokenType
+     * @param expiresIn
+     * @param scope
+     * @param refreshToken
+     * @param refreshExpiresIn
+     */
+    public AccessToken(String tokenType, String expiresIn, String scope, String refreshToken, String refreshExpiresIn) {
+        this.token = RandomGenerator.generateRandomString();
+        this.expiresIn = expiresIn;
+        this.type = tokenType;
+        this.scope = scope;
+        this.valid = true;
+        this.created = System.currentTimeMillis();
+        this.refreshToken = refreshToken;
+        this.refreshExpiresIn = (refreshExpiresIn != null && !refreshExpiresIn.isEmpty()) ? refreshExpiresIn : expiresIn;
     }
 
     public AccessToken() {
@@ -195,6 +221,14 @@ public class AccessToken implements Serializable {
         this.created = created;
     }
 
+    public String getRefreshExpiresIn() {
+        return refreshExpiresIn;
+    }
+
+    public void setRefreshExpiresIn(String refreshExpiresIn) {
+        this.refreshExpiresIn = refreshExpiresIn;
+    }
+
     public static AccessToken loadFromMap(Map<String, Object> map) {
         AccessToken accessToken = new AccessToken();
         accessToken.token = (String) map.get("token");
@@ -208,6 +242,7 @@ public class AccessToken implements Serializable {
         accessToken.userId = (String) map.get("userId");
         accessToken.created = (Long) map.get("created");
         accessToken.details = JSONUtils.convertStringToMap((String) map.get("details"));
+        accessToken.refreshExpiresIn = (String) ((map.get("refreshExpiresIn") != null ? map.get("refreshExpiresIn") : accessToken.expiresIn));
         return accessToken;
     }
 
@@ -224,16 +259,16 @@ public class AccessToken implements Serializable {
         accessToken.userId = map.get("userId");
         accessToken.created = Long.parseLong(map.get("created"));
         accessToken.details = JSONUtils.convertStringToMap(map.get("details"));
+        accessToken.refreshExpiresIn = map.get("refreshExpiresIn") != null ? map.get("refreshExpiresIn") : accessToken.expiresIn;
         return accessToken;
     }
 
     public boolean tokenExpired() {
-        // expires_in is in seconds
-        Long expiresInSec = Long.valueOf(getExpiresIn()) * 1000;
-        Long currentTime = System.currentTimeMillis();
-        if (expiresInSec + getCreated() < currentTime) {
-            return true;
-        }
-        return false;
+        return ((Long.valueOf(getExpiresIn()) * 1000L) + getCreated() < System.currentTimeMillis());
     }
+
+    public boolean refreshTokenExpired() {
+        return ((Long.valueOf(getRefreshExpiresIn()) * 1000L) + getCreated() < System.currentTimeMillis());
+    }
+
 }
