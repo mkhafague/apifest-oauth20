@@ -19,6 +19,7 @@
  */
 package com.apifest.oauth20;
 
+import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.persistence.hazelcast.HazelcastDBManager;
 
 public class DBManagerFactory {

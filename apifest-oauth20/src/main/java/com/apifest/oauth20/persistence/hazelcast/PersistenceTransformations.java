@@ -19,7 +19,7 @@ package com.apifest.oauth20.persistence.hazelcast;
 import com.apifest.oauth20.AccessToken;
 import com.apifest.oauth20.AuthCode;
 import com.apifest.oauth20.ClientCredentials;
-import com.apifest.oauth20.JSONUtils;
+import com.apifest.oauth20.utils.JSONUtils;
 import com.apifest.oauth20.Scope;
 
 /**

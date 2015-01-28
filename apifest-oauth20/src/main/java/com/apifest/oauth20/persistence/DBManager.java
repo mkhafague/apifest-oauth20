@@ -17,7 +17,12 @@
 /**
  * @author Apostol Terziev
  */
-package com.apifest.oauth20;
+package com.apifest.oauth20.persistence;
+
+import com.apifest.oauth20.AccessToken;
+import com.apifest.oauth20.AuthCode;
+import com.apifest.oauth20.ClientCredentials;
+import com.apifest.oauth20.Scope;
 
 import java.util.List;
 import java.util.Map;

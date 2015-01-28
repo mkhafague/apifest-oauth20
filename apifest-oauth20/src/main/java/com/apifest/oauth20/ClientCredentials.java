@@ -20,6 +20,8 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.Map;
 
+import com.apifest.oauth20.utils.JSONUtils;
+import com.apifest.oauth20.utils.RandomGenerator;
 import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonPropertyOrder;

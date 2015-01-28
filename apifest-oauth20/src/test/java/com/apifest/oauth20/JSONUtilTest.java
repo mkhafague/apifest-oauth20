@@ -21,6 +21,7 @@ import static org.testng.Assert.*;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.apifest.oauth20.utils.JSONUtils;
 import org.testng.annotations.Test;
 
 /**

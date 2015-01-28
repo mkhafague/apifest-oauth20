@@ -19,6 +19,7 @@ package com.apifest.oauth20;
 import static org.mockito.Mockito.mock;
 import static org.testng.Assert.assertTrue;
 
+import com.apifest.oauth20.persistence.DBManager;
 import org.slf4j.Logger;
 import org.testng.annotations.Test;
 

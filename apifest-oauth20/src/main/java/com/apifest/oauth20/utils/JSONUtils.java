@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.apifest.oauth20;
+package com.apifest.oauth20.utils;
 
 import java.io.IOException;
 import java.util.Map;

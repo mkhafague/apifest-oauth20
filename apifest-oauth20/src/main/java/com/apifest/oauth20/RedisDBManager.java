@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.apifest.oauth20.persistence.DBManager;
+import com.apifest.oauth20.utils.JSONUtils;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisSentinelPool;
 
@@ -55,7 +57,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#validClient(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#validClient(java.lang.String, java.lang.String)
      */
     @Override
     public boolean validClient(String clientId, String clientSecret) {
@@ -70,7 +72,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeClientCredentials(com.apifest.oauth20.ClientCredentials)
+     * @see com.apifest.oauth20.persistence.DBManager#storeClientCredentials(com.apifest.oauth20.ClientCredentials)
      */
     @Override
     public void storeClientCredentials(ClientCredentials clientCreds) {
@@ -91,7 +93,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeAuthCode(com.apifest.oauth20.AuthCode)
+     * @see com.apifest.oauth20.persistence.DBManager#storeAuthCode(com.apifest.oauth20.AuthCode)
      */
     @Override
     public void storeAuthCode(AuthCode authCode) {
@@ -118,7 +120,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#updateAuthCodeValidStatus(java.lang.String, boolean)
+     * @see com.apifest.oauth20.persistence.DBManager#updateAuthCodeValidStatus(java.lang.String, boolean)
      */
     @Override
     public void updateAuthCodeValidStatus(String authCode, boolean valid) {
@@ -128,7 +130,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeAccessToken(com.apifest.oauth20.AccessToken)
+     * @see com.apifest.oauth20.persistence.DBManager#storeAccessToken(com.apifest.oauth20.AccessToken)
      */
     @Override
     public void storeAccessToken(AccessToken accessToken) {
@@ -163,7 +165,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findAccessTokenByRefreshToken(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findAccessTokenByRefreshToken(java.lang.String, java.lang.String)
      */
     @Override
     public AccessToken findAccessTokenByRefreshToken(String refreshToken, String clientId) {
@@ -178,7 +180,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#updateAccessTokenValidStatus(java.lang.String, boolean)
+     * @see com.apifest.oauth20.persistence.DBManager#updateAccessTokenValidStatus(java.lang.String, boolean)
      */
     @Override
     public void updateAccessTokenValidStatus(String accessToken, boolean valid) {
@@ -188,7 +190,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findAccessToken(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findAccessToken(java.lang.String)
      */
     @Override
     public AccessToken findAccessToken(String accessToken) {
@@ -202,7 +204,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findAuthCode(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findAuthCode(java.lang.String, java.lang.String)
      */
     @Override
     public AuthCode findAuthCode(String authCode, String redirectUri) {
@@ -219,7 +221,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findClientCredentials(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findClientCredentials(java.lang.String)
      */
     @Override
     public ClientCredentials findClientCredentials(String clientId) {
@@ -233,7 +235,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeScope(com.apifest.oauth20.Scope)
+     * @see com.apifest.oauth20.persistence.DBManager#storeScope(com.apifest.oauth20.Scope)
      */
     @Override
     public boolean storeScope(Scope scope) {
@@ -249,7 +251,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#getAllScopes()
+     * @see com.apifest.oauth20.persistence.DBManager#getAllScopes()
      */
     @Override
     public List<Scope> getAllScopes() {
@@ -269,7 +271,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findScope(java.lang.String)
      */
     @Override
     public Scope findScope(String scopeName) {
@@ -283,7 +285,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#updateClientAppScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#updateClientAppScope(java.lang.String)
      */
     @Override
     public boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails) {
@@ -306,7 +308,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#getAllApplications()
+     * @see com.apifest.oauth20.persistence.DBManager#getAllApplications()
      */
     @Override
     public List<ClientCredentials> getAllApplications() {
@@ -327,7 +329,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#deleteScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#deleteScope(java.lang.String)
      */
     @Override
     public boolean deleteScope(String scopeName) {
@@ -339,7 +341,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#getAccessTokenByUserIdAndClientApp(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#getAccessTokenByUserIdAndClientApp(java.lang.String, java.lang.String)
      */
     @Override
     public List<AccessToken> getAccessTokenByUserIdAndClientApp(String userId, String clientId) {

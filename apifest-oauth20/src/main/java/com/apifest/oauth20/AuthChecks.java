@@ -22,6 +22,9 @@ import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.apifest.oauth20.persistence.DBManager;
+
+
 /**
  * Performs authentication checks.
  *

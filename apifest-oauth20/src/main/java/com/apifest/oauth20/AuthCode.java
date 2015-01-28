@@ -19,6 +19,7 @@ package com.apifest.oauth20;
 import java.util.Date;
 import java.util.Map;
 
+import com.apifest.oauth20.utils.RandomGenerator;
 import org.bson.types.ObjectId;
 
 /**

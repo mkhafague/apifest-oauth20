@@ -21,6 +21,7 @@ import java.nio.charset.Charset;
 import java.util.Date;
 import java.util.Map;
 
+import com.apifest.oauth20.persistence.DBManager;
 import org.apache.commons.codec.binary.Base64;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;

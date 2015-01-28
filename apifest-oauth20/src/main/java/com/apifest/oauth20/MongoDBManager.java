@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import com.apifest.oauth20.persistence.DBManager;
 import org.bson.BSONObject;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
@@ -75,7 +76,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeClientCredentials(com.apifest.oauth20.ClientCredentials)
+     * @see com.apifest.oauth20.persistence.DBManager#storeClientCredentials(com.apifest.oauth20.ClientCredentials)
      */
     // REVISIT: change interface to throw IOException
     @Override
@@ -88,7 +89,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findClientCredentials(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findClientCredentials(java.lang.String)
      */
     @SuppressWarnings("unchecked")
     @Override
@@ -105,7 +106,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeAuthCode(com.apifest.oauth20.AuthCode)
+     * @see com.apifest.oauth20.persistence.DBManager#storeAuthCode(com.apifest.oauth20.AuthCode)
      */
     @Override
     public void storeAuthCode(AuthCode authCode) {
@@ -117,7 +118,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findAuthCode(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findAuthCode(java.lang.String, java.lang.String)
      */
     @SuppressWarnings("unchecked")
     @Override
@@ -140,7 +141,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeAccessToken(com.apifest.oauth20.AccessToken)
+     * @see com.apifest.oauth20.persistence.DBManager#storeAccessToken(com.apifest.oauth20.AccessToken)
      */
     @Override
     public void storeAccessToken(AccessToken accessToken) {
@@ -152,7 +153,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findAccessToken(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findAccessToken(java.lang.String)
      */
     @SuppressWarnings("unchecked")
     @Override
@@ -182,7 +183,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findAccessTokenByRefreshToken(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findAccessTokenByRefreshToken(java.lang.String, java.lang.String)
      */
     @SuppressWarnings("unchecked")
     @Override
@@ -210,7 +211,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#updateAccessTokenValidStatus(java.lang.String, boolean)
+     * @see com.apifest.oauth20.persistence.DBManager#updateAccessTokenValidStatus(java.lang.String, boolean)
      */
     @Override
     public void updateAccessTokenValidStatus(String accessToken, boolean valid) {
@@ -225,7 +226,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#updateAuthCodeValidStatus(java.lang.String, boolean)
+     * @see com.apifest.oauth20.persistence.DBManager#updateAuthCodeValidStatus(java.lang.String, boolean)
      */
     @Override
     public void updateAuthCodeValidStatus(String authCode, boolean valid) {
@@ -240,7 +241,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#validClient(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#validClient(java.lang.String, java.lang.String)
      */
     @Override
     public boolean validClient(String clientId, String clientSecret) {
@@ -254,7 +255,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#storeScope(com.apifest.oauth20.Scope)
+     * @see com.apifest.oauth20.persistence.DBManager#storeScope(com.apifest.oauth20.Scope)
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -291,7 +292,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#getAllScopes()
+     * @see com.apifest.oauth20.persistence.DBManager#getAllScopes()
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -308,7 +309,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#findScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#findScope(java.lang.String)
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -371,7 +372,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#updateClientAppScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#updateClientAppScope(java.lang.String)
      */
     @Override
     public boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails) {
@@ -400,7 +401,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#getAllApplications()
+     * @see com.apifest.oauth20.persistence.DBManager#getAllApplications()
      */
     @Override
     @SuppressWarnings("unchecked")
@@ -418,7 +419,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#deleteScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#deleteScope(java.lang.String)
      */
     @Override
     public boolean deleteScope(String scopeName) {
@@ -429,7 +430,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.DBManager#getAccessTokenByUserIdAndClientApp(java.lang.String, java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#getAccessTokenByUserIdAndClientApp(java.lang.String, java.lang.String)
      */
     @Override
     @SuppressWarnings("unchecked")

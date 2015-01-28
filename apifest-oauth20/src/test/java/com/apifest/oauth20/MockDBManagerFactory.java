@@ -16,6 +16,8 @@
 
 package com.apifest.oauth20;
 
+import com.apifest.oauth20.persistence.DBManager;
+
 import static org.mockito.Mockito.mock;
 
 /**
