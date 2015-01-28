@@ -391,10 +391,7 @@ public class AuthorizationServer {
 
     protected boolean isExistingClient(String clientId) {
         ClientCredentials creds = db.findClientCredentials(clientId);
-        if (creds != null) {
-            return true;
-        }
-        return false;
+        return (creds != null);
     }
 
     protected String getExpiresIn(String tokenGrantType, String scope) {
@@ -405,9 +402,9 @@ public class AuthorizationServer {
         RevokeTokenRequest revokeRequest = new RevokeTokenRequest(req);
         revokeRequest.checkMandatoryParams();
         String clientId = revokeRequest.getClientId();
-        // check valid client_id and client_secret, status does not matter as token of inactive client app could be revoked too
-        if (!isValidClientCredentials(clientId, revokeRequest.getClientSecret())) {
-            throw new OAuthException(Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+        // check valid client_id, status does not matter as token of inactive client app could be revoked too
+        if (!isExistingClient(clientId)) {
+            throw new OAuthException(Response.INVALID_CLIENT_ID, HttpResponseStatus.BAD_REQUEST);
         }
         String token = revokeRequest.getAccessToken();
         AccessToken accessToken = db.findAccessToken(token);
