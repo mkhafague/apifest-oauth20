@@ -1576,7 +1576,7 @@ public class AuthorizationServerTest {
         HttpResponseStatus status = null;
         String message = null;
         try {
-            authServer.updateClientApp(req, clientId);
+            authServer.updateClientCredentials(req, clientId);
         } catch(OAuthException e) {
             status = e.getHttpStatus();
             message = e.getMessage();
@@ -1677,7 +1677,7 @@ public class AuthorizationServerTest {
         willReturn(true).given(authServer).isExistingClient(clientId);
 
         // WHEN
-        authServer.updateClientApp(req, clientId);
+        authServer.updateClientCredentials(req, clientId);
 
         // THEN
         verify(authServer).isExistingClient(clientId);

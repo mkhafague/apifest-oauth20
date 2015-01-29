@@ -55,6 +55,13 @@ public class AuthorizationServer {
     protected DBManager db = DBManagerFactory.getInstance();
     protected ScopeService scopeService = new ScopeService();
 
+    /**
+     * Issue {@link ClientCredentials} for an app
+     *
+     * @param req the request
+     * @return created credentials
+     * @throws OAuthException
+     */
     public ClientCredentials issueClientCredentials(HttpRequest req) throws OAuthException {
         ClientCredentials creds;
         String content = req.getContent().toString(CharsetUtil.UTF_8);
@@ -248,7 +255,6 @@ public class AuthorizationServer {
             AccessToken accessToken = new AccessToken(TOKEN_TYPE_BEARER, getExpiresIn(TokenRequest.PASSWORD, scope), scope,
                     getExpiresIn(TokenRequest.REFRESH_TOKEN, scope));
             accessToken.setClientId(tokenRequest.getClientId());
-            // Custom grantType handler needs to handle CSRF state by itself
             UserDetails userDetails = callCustomGrantTypeHandler(req);
             if (userDetails != null && userDetails.getUserId() != null) {
                 accessToken.setUserId(userDetails.getUserId());
@@ -258,7 +264,7 @@ public class AuthorizationServer {
             return accessToken;
         } catch (AuthenticationException e) {
             log.error("Cannot authenticate user", e);
-            throw new OAuthException(e, Response.CANNOT_AUTHENTICATE_USER, HttpResponseStatus.UNAUTHORIZED);
+            throw new OAuthException(e, Response.CANNOT_AUTHENTICATE_USER, tokenRequest.getState(), HttpResponseStatus.UNAUTHORIZED);
         }
     }
 
@@ -449,7 +455,7 @@ public class AuthorizationServer {
         return false;
     }
 
-    public boolean updateClientApp(HttpRequest req, String clientId) throws OAuthException {
+    public boolean updateClientCredentials(HttpRequest req, String clientId) throws OAuthException {
         String content = req.getContent().toString(CharsetUtil.UTF_8);
         String contentType = req.headers().get(HttpHeaders.Names.CONTENT_TYPE);
         if (contentType != null && contentType.contains(Response.APPLICATION_JSON)) {

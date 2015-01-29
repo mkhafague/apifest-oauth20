@@ -554,7 +554,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         if (m.find()) {
             String clientId = m.group(1);
             try {
-                if (auth.updateClientApp(req, clientId)) {
+                if (auth.updateClientCredentials(req, clientId)) {
                     response = Response.createOkResponse(Response.CLIENT_APP_UPDATED);
                 }
             } catch (OAuthException ex) {
