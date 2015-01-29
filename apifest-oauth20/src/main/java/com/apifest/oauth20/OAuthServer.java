@@ -21,12 +21,20 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.KeyStore;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelFactory;
@@ -37,11 +45,18 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.codec.http.HttpChunkAggregator;
 import org.jboss.netty.handler.codec.http.HttpRequestDecoder;
 import org.jboss.netty.handler.codec.http.HttpResponseEncoder;
+import org.jboss.netty.handler.ssl.SslContext;
+import org.jboss.netty.handler.ssl.SslHandler;
+import org.jboss.netty.handler.ssl.util.SelfSignedCertificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.apifest.oauth20.api.ICustomGrantTypeHandler;
 import com.apifest.oauth20.api.IUserAuthentication;
+import com.apifest.oauth20.persistence.DBManager;
+import com.apifest.oauth20.security.GuestUserAuthentication;
+import com.apifest.oauth20.security.SslRequiredHandler;
+import com.apifest.oauth20.security.SubnetRange;
 
 /**
  * Class responsible for ApiFest OAuth 2.0 Server.
@@ -66,23 +81,33 @@ public final class OAuthServer {
     private static URLClassLoader jarClassLoader;
     private static String hazelcastPassword;
 
+    private static SslContext sslCtx;
+    private static SSLContext serverContext;
+    private static SubnetRange allowedIPs;
+    private static boolean productionMode;
+    private static Map<String, String> serverCredentials;
+
     // expires_in in sec for grant type password
     public static final int DEFAULT_PASSWORD_EXPIRES_IN = 900;
 
     // expires_in in sec for grant type client_credentials
     public static final int DEFAULT_CC_EXPIRES_IN = 1800;
 
+    public static final String OAUTH2_SERVER_CLIENT_NAME = "Oauth2Server";
+    
     static Logger log = LoggerFactory.getLogger(OAuthServer.class);
 
     private OAuthServer() {
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         if (!loadConfig()) {
             System.exit(1);
         }
 
         DBManagerFactory.init();
+
+		serverCredentials = setAuthServerContext(host, portInt);
         ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
                 Executors.newCachedThreadPool());
 
@@ -92,10 +117,22 @@ public final class OAuthServer {
             @Override
             public ChannelPipeline getPipeline() {
                 ChannelPipeline pipeline = Channels.pipeline();
+                
+                // Add SSL handler first to encrypt and decrypt everything.
+                if (sslCtx != null)
+                	pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(sslCtx.newHandler()));
+                else {
+                	SSLEngine engine = serverContext.createSSLEngine();
+        			engine.setUseClientMode(false);
+                	pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(new SslHandler(engine)));
+                }
                 pipeline.addLast("decoder", new HttpRequestDecoder());
                 pipeline.addLast("aggregator", new HttpChunkAggregator(4096));
                 pipeline.addLast("encoder", new HttpResponseEncoder());
-                pipeline.addLast("handler", new HttpRequestHandler());
+                
+                HttpRequestHandler handler = new HttpRequestHandler();
+                handler.setInitialContext(serverCredentials, allowedIPs, productionMode);
+                pipeline.addLast("handler", handler);
                 return pipeline;
             }
         });
@@ -177,55 +214,44 @@ public final class OAuthServer {
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<IUserAuthentication> loadCustomUserAuthentication(String className)
-            throws ClassNotFoundException {
-        Class<IUserAuthentication> result = null;
-        try {
-            URLClassLoader classLoader = getJarClassLoader();
-            if (classLoader != null) {
-                Class<?> clazz = classLoader.loadClass(className);
-                if (IUserAuthentication.class.isAssignableFrom(clazz)) {
-                    result = (Class<IUserAuthentication>) clazz;
-                } else {
-                    log.error(
-                            "user.authentication.class {} does not implement IUserAuthentication interface, default authentication will be used",
-                            clazz);
-                }
-            } else {
-                log.error("cannot load custom jar, default authentication will be used");
-            }
-        } catch (MalformedURLException e) {
-            log.error("cannot load custom jar, default authentication will be used");
-        } catch (IllegalArgumentException e) {
-            log.error(e.getMessage());
+    public static Class<IUserAuthentication> loadCustomUserAuthentication(String className) throws ClassNotFoundException {
+        Class<?> clazz = loadCustomClass(className);
+        if (IUserAuthentication.class.isAssignableFrom(clazz)) {
+            return (Class<IUserAuthentication>) clazz;
+        } else {
+            log.error("user.authentication.class {} does not implement IUserAuthentication interface, default authentication will be used", clazz);
         }
-        return result;
+        
+        return null;
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<ICustomGrantTypeHandler> loadCustomGrantTypeClass(String className)
-            throws ClassNotFoundException {
-        Class<ICustomGrantTypeHandler> result = null;
-        try {
-            URLClassLoader classLoader = getJarClassLoader();
-            if (classLoader != null) {
-                Class<?> clazz = classLoader.loadClass(className);
-                if (ICustomGrantTypeHandler.class.isAssignableFrom(clazz)) {
-                    result = (Class<ICustomGrantTypeHandler>) clazz;
-                } else {
-                    log.error("custom.grant_type.class {} does not implement ICustomGrantTypeHandler interface", clazz);
-                }
-            } else {
-                log.error("cannot load custom jar");
-            }
-        } catch (MalformedURLException e) {
-            log.error("cannot load custom jar");
-        } catch (IllegalArgumentException e) {
-            log.error(e.getMessage());
+    public static Class<ICustomGrantTypeHandler> loadCustomGrantTypeClass(String className) throws ClassNotFoundException {
+		Class<?> clazz = loadCustomClass(className);
+        if (ICustomGrantTypeHandler.class.isAssignableFrom(clazz)) {
+            return (Class<ICustomGrantTypeHandler>) clazz;
+        } else {
+            log.error("custom.grant_type.class {} does not implement ICustomGrantTypeHandler interface", clazz);
         }
-        return result;
+
+        return null;
     }
 
+	public static Class<?> loadCustomClass(String className) throws ClassNotFoundException {
+		try {
+			URLClassLoader classLoader = getJarClassLoader();
+			if (classLoader != null) {
+				return classLoader.loadClass(className);
+			} else {
+				log.error("cannot load custom jar");
+			}
+		} catch (MalformedURLException e) {
+			log.error("cannot load custom jar");
+		}		
+		
+		return null;
+	}
+	
     private static URLClassLoader getJarClassLoader() throws MalformedURLException {
         if (jarClassLoader == null) {
             if (customJar != null) {
@@ -235,7 +261,7 @@ public final class OAuthServer {
                     jarClassLoader = URLClassLoader.newInstance(new URL[] { jarfile },
                             OAuthServer.class.getClassLoader());
                 } else {
-                    throw new IllegalArgumentException(
+                    throw new MalformedURLException(
                             "check property custom.classes.jar, jar does not exist, default authentication will be used");
                 }
             }
@@ -243,12 +269,18 @@ public final class OAuthServer {
         return jarClassLoader;
     }
 
+    @SuppressWarnings("unchecked")
     protected static void loadProperties(InputStream in) {
         Properties props = new Properties();
         try {
             props.load(in);
             customJar = props.getProperty("custom.classes.jar");
             userAuthClass = props.getProperty("user.authenticate.class");
+            if (userAuthClass == null) {
+            	Class<?> clazz = GuestUserAuthentication.class;
+            	userAuthenticationClass = (Class<IUserAuthentication>) clazz;
+            }
+			
             customGrantType = props.getProperty("custom.grant_type");
             customGrantTypeClass = props.getProperty("custom.grant_type.class");
             database = props.getProperty("oauth20.database");
@@ -258,15 +290,112 @@ public final class OAuthServer {
             if (dbHost == null || dbHost.length() == 0) {
                 dbHost = "localhost";
             }
+
             setHostAndPort((String) props.get("oauth20.host"), (String) props.get("oauth20.port"));
             apifestOAuth20Nodes = props.getProperty("apifest-oauth20.nodes");
+			
             // dev-pass is the default password used in Hazelcast
             hazelcastPassword = props.getProperty("hazelcast.password", "dev-pass");
-        } catch (IOException e) {
-            log.error("Cannot load properties file", e);
+            
+            configureSSL((String) props.get("oauth20.keystore.path"), 
+            		(String) props.get("oauth20.keystore.password"),
+            		(String) props.get("oauth20.keystore.algorithm"));
+            
+            String mode = (String) props.get("oauth20.production.mode");
+            productionMode = Boolean.parseBoolean(mode);
+            String subnetsString = (String) props.get("oauth20.subnets.whitelist");
+            if (subnetsString != null)
+            	allowedIPs = SubnetRange.parse(subnetsString);
+        } catch (Exception e) {            
+			log.error("Cannot load properties file", e);
         }
     }
 
+    protected static Map<String, String> setAuthServerContext(String host, int portInt) {
+    	if (productionMode) {
+	    	DBManager db = DBManagerFactory.getInstance();
+	    	
+	    	// check/create admin scope
+	        Scope adminScope = new Scope();
+	        adminScope.setScope("admin");
+	        adminScope.setDescription("Administration scope");
+	        adminScope.setPassExpiresIn(OAuthServer.DEFAULT_PASSWORD_EXPIRES_IN);
+	        adminScope.setCcExpiresIn(OAuthServer.DEFAULT_CC_EXPIRES_IN);
+	        
+	        Scope foundScope = db.findScope("admin");
+	        
+	        if (foundScope == null)
+	        	db.storeScope(adminScope);
+	        
+	        // check/create oauth20 application issueClientCredentials
+	        ApplicationInfo appInfo = new ApplicationInfo();
+	        appInfo.setName(OAUTH2_SERVER_CLIENT_NAME);
+	        appInfo.setScope(adminScope.getScope());
+	        appInfo.setDescription("Oauth2 server admin");
+	        appInfo.setRedirectUri("https://"+host+":"+portInt+"/oauth20");
+	        appInfo.valid();
+	        
+	        ClientCredentials cc = db.findClientCredentials(appInfo.getId());
+	        
+	        if (cc == null) {
+	            cc = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
+	                    appInfo.getRedirectUri(), appInfo.getApplicationDetails());
+	
+	            cc.setStatus(ClientCredentials.ACTIVE_STATUS);
+	            
+	        	ClientCredentials foundCc = db.findClientCredentialsByName(OAUTH2_SERVER_CLIENT_NAME);
+	        	if (foundCc == null)
+	        		db.storeClientCredentials(cc);
+	        }
+	        
+	        Map<String, String> map = new HashMap<String, String>();
+	        map.put(TokenRequest.GRANT_TYPE, TokenRequest.PASSWORD);
+	        map.put(TokenRequest.SCOPE, cc.getScope());
+	        map.put(TokenRequest.CLIENT_ID, cc.getId());
+	        map.put(TokenRequest.CLIENT_SECRET, cc.getSecret());
+	        
+	        return map;
+    	}
+    	
+    	// Should return some default info ?
+    	return null;
+    }
+    
+    protected static void configureSSL(String keystorePath, String password, String algorithm)
+    	throws IOException
+    {
+    	if (keystorePath != null) {
+    		try
+    		{
+	    		String alg = algorithm == null ? "JKS" : algorithm;
+	    		char[] pwd = password == null ? null : password.toCharArray();
+	    		final KeyStore ks = KeyStore.getInstance(alg);
+	    		
+	    		ks.load(new FileInputStream(keystorePath), pwd); 
+	    		final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());    		 
+	    		kmf.init(ks, pwd);
+	    		
+	    		serverContext = SSLContext.getInstance("TLS");
+	    		serverContext.init(kmf.getKeyManagers(), null, null);
+    		}
+    		catch (Exception e) {
+				throw new IOException("Unable to load certificate", e);
+			}
+    	}
+    	else {
+            String fqdn;
+            try {
+            	fqdn = InetAddress.getLocalHost().getCanonicalHostName();
+            	log.info("Running on host ["+fqdn+"] ...");
+                SelfSignedCertificate ssc = new SelfSignedCertificate(fqdn);
+                sslCtx = SslContext.newServerContext(ssc.certificate(), ssc.privateKey());
+            }
+            catch (Exception e) {
+            	throw new IOException("Unable to create self signed certificate", e);
+			}
+    	}
+    }
+    
     protected static void setHostAndPort(String configHost, String configPort) {
         host = configHost;
         // if not set in properties file, loaded from env var
@@ -289,7 +418,7 @@ public final class OAuthServer {
         try {
             portInt = Integer.parseInt(portStr);
         } catch (NumberFormatException e) {
-            log.error("oauth20.port must be integer");
+            log.error("oauth20.port must be an integer");
             System.exit(1);
         }
     }
@@ -297,6 +426,10 @@ public final class OAuthServer {
     public static String getHost() {
         return host;
     }
+
+    protected static int getPortInt() {
+		return portInt;
+	}
 
     public static String getDbHost() {
         return dbHost;

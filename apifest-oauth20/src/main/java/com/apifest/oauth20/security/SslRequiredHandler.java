@@ -15,6 +15,11 @@ import org.slf4j.LoggerFactory;
 
 import com.apifest.oauth20.Response;
 
+/**
+ *
+ *
+ * @author Edouard De Oliveira
+ */
 public class SslRequiredHandler
 	extends FrameDecoder
 {

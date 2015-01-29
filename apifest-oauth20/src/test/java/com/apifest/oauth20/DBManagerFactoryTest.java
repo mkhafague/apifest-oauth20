@@ -24,6 +24,9 @@ import com.apifest.oauth20.persistence.mongodb.MongoDBManager;
 import org.slf4j.Logger;
 import org.testng.annotations.Test;
 
+import java.io.File;
+import java.net.URISyntaxException;
+
 /**
  * @author Rossitsa Borissova
  */
@@ -33,8 +36,12 @@ public class DBManagerFactoryTest {
     public void when_mongo_oauth20_database_set_return_mongodb_manager() throws Exception {
         // GIVEN
         OAuthServer.log = mock(Logger.class);
-        String path = getClass().getClassLoader().getResource("apifest-oauth-test.properties").getPath();
-        System.setProperty("properties.file", path);
+        try {
+            String path = (new File(getClass().getClassLoader().getResource("apifest-oauth-test.properties").toURI())).toString();
+            System.setProperty("properties.file", path);
+        } catch (URISyntaxException uex) {
+            // do nothing
+        }
         OAuthServer.loadConfig();
 
         // WHEN

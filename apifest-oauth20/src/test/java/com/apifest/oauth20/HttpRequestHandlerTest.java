@@ -24,9 +24,14 @@ import static org.mockito.Matchers.*;
 import static org.mockito.Mockito.*;
 import static org.testng.Assert.*;
 
+import java.io.File;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.apifest.oauth20.persistence.DBManager;
+import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
@@ -56,8 +61,12 @@ public class HttpRequestHandlerTest {
     @BeforeMethod
     public void setup() {
         OAuthServer.log = mock(Logger.class);
-        String path = getClass().getClassLoader().getResource("apifest-oauth-test.properties").getPath();
-        System.setProperty("properties.file", path);
+        try {
+            String path = (new File(getClass().getClassLoader().getResource("apifest-oauth-test.properties").toURI())).toString();
+            System.setProperty("properties.file", path);
+        } catch (URISyntaxException uex) {
+            // do nothing
+        }
         OAuthServer.loadConfig();
 
         handler = spy(new HttpRequestHandler());
@@ -226,7 +235,7 @@ public class HttpRequestHandlerTest {
         ChannelHandlerContext ctx = mockChannelHandlerContext();
 
         MessageEvent event = mock(MessageEvent.class);
-        HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, HttpRequestHandler.OAUTH_CLIENT_SCOPE_URI);
+        HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, HttpRequestHandler.OAUTH_CLIENT_SCOPE_URI+"/fakeId");
         willReturn(req).given(event).getMessage();
         willReturn(mock(HttpResponse.class)).given(handler).handleUpdateScope(req);
 
@@ -328,7 +337,7 @@ public class HttpRequestHandlerTest {
         ChannelHandlerContext ctx = mockChannelHandlerContext();
 
         MessageEvent event = mock(MessageEvent.class);
-        HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, HttpRequestHandler.APPLICATION_URI);
+        HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, HttpRequestHandler.APPLICATION_URI+"/fakeId");
         willReturn(req).given(event).getMessage();
         willReturn(mock(HttpResponse.class)).given(handler).handleUpdateClientApplication(req);
 
@@ -581,8 +590,7 @@ public class HttpRequestHandlerTest {
         // GIVEN
         String uri = HttpRequestHandler.ACCESS_TOKEN_VALIDATE_URI;
         HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, uri);
-        AuthorizationServer auth = mock(AuthorizationServer.class);
-        handler.auth = auth;
+        handler.auth = mock(AuthorizationServer.class);
 
         // WHEN
         HttpResponse response = handler.handleTokenValidate(req);
@@ -597,8 +605,7 @@ public class HttpRequestHandlerTest {
         // GIVEN
         String uri = HttpRequestHandler.ACCESS_TOKEN_VALIDATE_URI + "?token=";
         HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, uri);
-        AuthorizationServer auth = mock(AuthorizationServer.class);
-        handler.auth = auth;
+        handler.auth = mock(AuthorizationServer.class);
 
         // WHEN
         HttpResponse response = handler.handleTokenValidate(req);
@@ -646,8 +653,7 @@ public class HttpRequestHandlerTest {
     public void when_revoke_token_and_oauth_exception_return_error_response() throws Exception {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
-        AuthorizationServer auth = mock(AuthorizationServer.class);
-        handler.auth = auth;
+        handler.auth = mock(AuthorizationServer.class);
         willThrow(new OAuthException(Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST))
             .given(handler.auth).revokeToken(req);
 
@@ -735,8 +741,7 @@ public class HttpRequestHandlerTest {
         String userId = "214331231";
         String clientId = "218900b6c8d973881cf4185ecf";
         willReturn(HttpRequestHandler.ACCESS_TOKEN_URI + "?client_id=" + clientId + "&user_id=" + userId).given(req).getUri();
-        AuthorizationServer auth = mock(AuthorizationServer.class);
-        handler.auth = auth;
+        handler.auth = mock(AuthorizationServer.class);
         willReturn(false).given(handler.auth).isActiveClientId(clientId);
 
 
@@ -747,15 +752,87 @@ public class HttpRequestHandlerTest {
         assertEquals(response.getContent().toString(CharsetUtil.UTF_8), Response.INVALID_CLIENT_ID);
     }
 
+    private HttpRequest testState(String state, boolean raiseError) {
+        // GIVEN
+        HttpRequest req = mock(HttpRequest.class);
+        HttpHeaders headers = new DefaultHttpHeaders();
+        headers.add(HttpHeaders.Names.CONTENT_TYPE, HttpHeaders.Values.APPLICATION_X_WWW_FORM_URLENCODED);
+        willReturn(headers).given(req).headers();
+
+        String username = "ted";
+        String pwd = "secret";
+        String clientId = "218900b6c8d973881cf4185ecf";
+        String clientSecret = "218900b6c8d9715f16d5s11f5sd4621fd2s881cf4185ecf15f16d5s11f5sd4621fd2s";
+        String scope = "basic";
+
+        willReturn(HttpRequestHandler.ACCESS_TOKEN_URI).given(req).getUri();
+        String content = "grant_type=password&client_id=" + clientId + "&scope=" + scope + "&client_secret="
+                + clientSecret + "&username=" + username+ "&password=" + pwd;
+        if (state != null)
+            content += "&state="+ state;
+        ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
+        given(req.getContent()).willReturn(buf);
+
+        handler.auth.db = mock(DBManager.class);
+        handler.auth.scopeService = mock(ScopeService.class);
+
+        ClientCredentials cc = new ClientCredentials("app", scope, "", "http://example.com", clientId, clientSecret, null);
+        if (raiseError)
+            cc.setStatus(ClientCredentials.INACTIVE_STATUS);
+        willReturn(cc).given(handler.auth.db).findClientCredentials(clientId);
+        willReturn(scope).given(handler.auth.scopeService).getValidScope(scope, clientId);
+
+        return req;
+    }
+
     @Test
-    public void when_get_tokens_invoke_get_token_by_user_and_client() throws Exception {
+    public void when_handle_token_with_state_return_state_in_exception_response() throws Exception {
+        // GIVEN
+        String state = "15f16d5s11f5sd4621fd2s";
+        HttpRequest req = testState(state, true);
+
+        // WHEN
+        HttpResponse response = handler.handleToken(req);
+
+        // THEN
+        String s = response.getContent().toString(CharsetUtil.UTF_8);
+        assertTrue(s.contains("error\":") && s.contains(state));
+    }
+
+    @Test
+    public void when_handle_token_with_state_return_state_in_response() throws Exception {
+        // GIVEN
+        String state = "15f16d5s11f5sd4621fd2s";
+        HttpRequest req = testState(state, false);
+
+        // WHEN
+        HttpResponse response = handler.handleToken(req);
+
+        // THEN
+        String s = response.getContent().toString(CharsetUtil.UTF_8);
+        assertTrue(s.contains("state\":") && s.contains(state));
+    }
+
+    @Test
+    public void when_handle_token_with_no_state_dont_return_state_in_response() throws Exception {
+        // GIVEN
+        HttpRequest req = testState(null, false);
+
+        // WHEN
+        HttpResponse response = handler.handleToken(req);
+
+        // THEN
+        assertTrue(!(response.getContent().toString(CharsetUtil.UTF_8)).contains("state\":"));
+    }
+    
+    @Test
+	public void when_get_tokens_invoke_get_token_by_user_and_client() throws Exception {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
         String userId = "214331231";
         String clientId = "218900b6c8d973881cf4185ecf";
         willReturn(HttpRequestHandler.ACCESS_TOKEN_URI + "?client_id=" + clientId + "&user_id=" + userId).given(req).getUri();
-        AuthorizationServer auth = mock(AuthorizationServer.class);
-        handler.auth = auth;
+        handler.auth = mock(AuthorizationServer.class);
         willReturn(true).given(handler.auth).isExistingClient(clientId);
         MockDBManagerFactory.install();
         List<AccessToken> tokens = new ArrayList<AccessToken>();

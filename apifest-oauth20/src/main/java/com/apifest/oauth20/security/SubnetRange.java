@@ -4,6 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ *
+ *
+ * @author Edouard De Oliveira
+ */
 public class SubnetRange {
 	private static Pattern pattern = Pattern.compile("[\\p{Blank},]");
 	private List<SubnetUtils> ranges = new ArrayList<SubnetUtils>();

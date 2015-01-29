@@ -9,6 +9,11 @@ import com.apifest.oauth20.api.AuthenticationException;
 import com.apifest.oauth20.api.IUserAuthentication;
 import com.apifest.oauth20.api.UserDetails;
 
+/**
+ *
+ *
+ * @author Edouard De Oliveira
+ */
 public class GuestUserAuthentication implements IUserAuthentication {
 	private static Map<String, String> details = new HashMap<String, String>();
 	public static UserDetails guest = new UserDetails("guest", details);
