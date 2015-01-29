@@ -27,11 +27,11 @@ import org.slf4j.LoggerFactory;
  */
 public class OAuthException extends Exception {
 
-    private static final long serialVersionUID = -2288029087691423012L;
+	private static final long serialVersionUID = 3812751481199373260L;
 
-    protected static Logger log = LoggerFactory.getLogger(OAuthException.class);
+	protected static Logger log = LoggerFactory.getLogger(OAuthException.class);
 
-    private String message;
+    private String message = "{\"error\": \"unknown error\"}";
     private HttpResponseStatus httpStatus;
 
     public OAuthException(String message, HttpResponseStatus httpStatus) {
@@ -40,12 +40,34 @@ public class OAuthException extends Exception {
         this.httpStatus = httpStatus;
     }
 
+    public OAuthException(String message, String state, HttpResponseStatus httpStatus) {
+        super();
+        this.message = message;
+        this.httpStatus = httpStatus;
+        appendStateToMessage(state);
+    }
+    
     public OAuthException(Throwable e, String message, HttpResponseStatus httpStatus) {
         super(e);
         this.message = message;
         this.httpStatus = httpStatus;
     }
+    
+    public OAuthException(Throwable e, String message, String state, HttpResponseStatus httpStatus) {
+        super(e);
+        this.message = message;
+        this.httpStatus = httpStatus;
+        appendStateToMessage(state);
+    }    
 
+    private void appendStateToMessage(String state) {
+    	if (state != null) {
+    		StringBuilder sb = new StringBuilder(message);
+    		sb.insert(sb.length()-1, ", \"state\": \""+state+"\"");
+    		message = sb.toString();
+    	}
+    }
+    
     @Override
     public String getMessage() {
         return message;
@@ -54,5 +76,4 @@ public class OAuthException extends Exception {
     public HttpResponseStatus getHttpStatus() {
         return httpStatus;
     }
-
 }

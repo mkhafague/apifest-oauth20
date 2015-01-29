@@ -17,6 +17,7 @@
 package com.apifest.oauth20;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -33,6 +34,7 @@ import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
@@ -46,6 +48,8 @@ import org.slf4j.LoggerFactory;
 
 import com.apifest.oauth20.api.ExceptionEventHandler;
 import com.apifest.oauth20.api.LifecycleHandler;
+import com.apifest.oauth20.security.RestrictedAccessException;
+import com.apifest.oauth20.security.SubnetRange;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -55,6 +59,8 @@ import com.google.gson.JsonObject;
  * @author Rossitsa Borissova
  */
 public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
+
+	protected static final String ADMIN_LOGIN_URI = "/oauth20/admin-login";
 
     protected static final String AUTH_CODE_URI = "/oauth20/auth-codes";
     protected static final String ACCESS_TOKEN_URI = "/oauth20/tokens";
@@ -72,6 +78,56 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
     protected AuthorizationServer auth = new AuthorizationServer();
 
+    protected SubnetRange allowedIPs;
+    private boolean productionMode = false;
+	private static Map<String, String> serverCredentials;
+
+	public HttpRequestHandler()
+	{
+	}
+	
+	protected void setInitialContext(Map<String, String> serverCredentials, SubnetRange allowedIPs, boolean productionMode)
+	{
+		HttpRequestHandler.serverCredentials = serverCredentials;
+		this.allowedIPs = allowedIPs;
+		this.productionMode = productionMode;
+	}
+
+	private void checkSecurityRestrictions(ChannelHandlerContext ctx, String rawUri, HttpRequest req)
+		throws RestrictedAccessException {
+		checkSecurityRestrictions(true, ctx, rawUri, req);
+	}
+	
+	private void checkSecurityRestrictions(boolean checkAuth, ChannelHandlerContext ctx, String rawUri, HttpRequest req) 
+		throws RestrictedAccessException
+	{
+		if (productionMode) {
+			String addr = ((InetSocketAddress) ctx.getChannel().getRemoteAddress()).getAddress().getHostAddress();
+			
+			if (!allowedIPs.inRange(addr)) {
+				log.info("Unauthorized access to "+rawUri+" from "+addr+" ...");
+				HttpResponse unauthorizedResponse = Response.createResponse(HttpResponseStatus.FORBIDDEN, "Unauthorized access");
+				throw new RestrictedAccessException(unauthorizedResponse);
+			}
+			
+			if (checkAuth) {
+				String authHeader = req.headers().get(HttpHeaders.Names.AUTHORIZATION);
+				if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+					log.info("Unauthorized access (invalid auth) to "+rawUri+" from "+addr+" ...");
+					throw new RestrictedAccessException(Response.createUnauthorizedResponse());
+				}
+				else {
+					String tokenParam = authHeader.substring(7);
+					AccessToken token = auth.isValidToken(tokenParam);
+					if (token == null || !token.isValid()) {
+						log.info("Unauthorized access (invalid token) to "+rawUri+" from "+addr+" ...");
+						throw new RestrictedAccessException(Response.createUnauthorizedResponse());				
+					}
+				}
+			}
+		}
+	}
+	
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         final Channel channel = ctx.getChannel();
@@ -90,47 +146,90 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
                 invokeExceptionHandler(e2, req);
             }
 
-            HttpResponse response = null;
-            if (APPLICATION_URI.equals(rawUri) && method.equals(HttpMethod.POST)) {
-                response = handleRegister(req);
-            } else if (AUTH_CODE_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
-                response = handleAuthorize(req);
-            } else if (ACCESS_TOKEN_URI.equals(rawUri) && method.equals(HttpMethod.POST)) {
-                response = handleToken(req);
-            } else if (ACCESS_TOKEN_VALIDATE_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
-                response = handleTokenValidate(req);
-            } else if (APPLICATION_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
-                response = handleGetAllClientApplications(req);
-            } else if (rawUri.startsWith(APPLICATION_URI) && method.equals(HttpMethod.GET)) {
-                    response = handleGetClientApplication(req);
-            } else if (ACCESS_TOKEN_REVOKE_URI.equals(rawUri) && method.equals(HttpMethod.POST)) {
-                response = handleTokenRevoke(req);
-            } else if (OAUTH_CLIENT_SCOPE_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
-                response = handleGetAllScopes(req);
-            } else if (OAUTH_CLIENT_SCOPE_URI.equals(rawUri) && method.equals(HttpMethod.POST)) {
-                response = handleRegisterScope(req);
-            } else if (ACCESS_TOKEN_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
-                response = handleGetAccessTokens(req);
-            } else if (rawUri.startsWith(OAUTH_CLIENT_SCOPE_URI) && method.equals(HttpMethod.PUT)) {
-                response = handleUpdateScope(req);
-            } else if (rawUri.startsWith(OAUTH_CLIENT_SCOPE_URI) && method.equals(HttpMethod.GET)) {
-                response = handleGetScope(req);
-            } else if (rawUri.startsWith(APPLICATION_URI) && method.equals(HttpMethod.PUT)) {
-                response = handleUpdateClientApplication(req);
-            } else if (rawUri.startsWith(OAUTH_CLIENT_SCOPE_URI) && method.equals(HttpMethod.DELETE)) {
-                response = handleDeleteScope(req);
-            } else {
-                response = Response.createNotFoundResponse();
+            HttpResponse response;
+            try {
+            	if (ADMIN_LOGIN_URI.equals(rawUri) && method.equals(HttpMethod.POST)) {
+            		checkSecurityRestrictions(false, ctx, rawUri, req);
+            		response = handleLogin(req);
+            	} 
+            	// APPLICATION URI's 
+            	else if (APPLICATION_URI.equals(rawUri)) {
+            		if (method.equals(HttpMethod.GET)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleGetAllClientApplications(req);
+            		} else if (method.equals(HttpMethod.POST)) {
+		    			checkSecurityRestrictions(ctx, rawUri, req); 
+		                response = handleRegister(req);
+		            } else {
+		            	response = Response.createNotFoundResponse();
+		            }
+	            } else if (rawUri.startsWith(APPLICATION_URI)) {
+	            	if (method.equals(HttpMethod.GET)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleGetClientApplication(req);
+	            	} else if (method.equals(HttpMethod.PUT)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleUpdateClientApplication(req);
+		            } else {
+		            	response = Response.createNotFoundResponse();
+		            }
+	            } else if (AUTH_CODE_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
+	                response = handleAuthorize(req);
+	            } 
+	            // ACCESS TOKEN URI's
+	            else if (ACCESS_TOKEN_URI.equals(rawUri)) {
+	            	if (method.equals(HttpMethod.GET)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleGetAccessTokens(req);
+	            	} else if (method.equals(HttpMethod.POST))
+	            		response = handleToken(req);
+		            else {
+		            	response = Response.createNotFoundResponse();
+		            }
+	            } else if (ACCESS_TOKEN_VALIDATE_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
+	            	// restrict IP access only, this is a server to server call ?!
+	            	checkSecurityRestrictions(false, ctx, rawUri, req);
+	                response = handleTokenValidate(req);
+	            } else if (ACCESS_TOKEN_REVOKE_URI.equals(rawUri) && method.equals(HttpMethod.POST)) {
+	            	checkSecurityRestrictions(ctx, rawUri, req);
+	                response = handleTokenRevoke(req);
+	            } 
+	            // SCOPE URI's
+	            else if (OAUTH_CLIENT_SCOPE_URI.equals(rawUri)) {
+	            	if (method.equals(HttpMethod.GET)) {
+	            		checkSecurityRestrictions(ctx, rawUri, req);
+	            		response = handleGetAllScopes(req);
+	            	} else if (method.equals(HttpMethod.POST)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleRegisterScope(req);
+		            } else {
+		            	response = Response.createNotFoundResponse();
+		            }
+	            } else if (rawUri.startsWith(OAUTH_CLIENT_SCOPE_URI)) {
+	            	if (method.equals(HttpMethod.GET)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleGetScope(req);
+		            } else if (method.equals(HttpMethod.PUT)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleUpdateScope(req);
+		            } else if (method.equals(HttpMethod.DELETE)) {
+		            	checkSecurityRestrictions(ctx, rawUri, req);
+		                response = handleDeleteScope(req);
+		            } else {
+		            	response = Response.createNotFoundResponse();
+		            }
+	            } else {
+	            	response = Response.createNotFoundResponse();
+	            }
+            } catch (RestrictedAccessException raex) {
+            	response = raex.getResponse();
             }
-
             invokeResponseEventHandlers(req, response);
             ChannelFuture future = channel.write(response);
 
             if(!HttpHeaders.isKeepAlive(req)) {
                 future.addListener(ChannelFutureListener.CLOSE);
             }
-            return;
-
         } else {
             log.info("write response here from the BE");
         }
@@ -168,7 +267,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleTokenValidate(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         QueryStringDecoder dec = new QueryStringDecoder(req.getUri());
         Map<String, List<String>> params = dec.getParameters();
         String tokenParam = QueryParameter.getFirstElement(params, QueryParameter.TOKEN);
@@ -188,15 +287,19 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         return response;
     }
 
-    protected HttpResponse handleToken(HttpRequest request) {
+    protected HttpResponse handleLogin(HttpRequest request) {
         HttpResponse response = null;
         String contentType = request.headers().get(HttpHeaders.Names.CONTENT_TYPE);
         if (contentType != null && contentType.contains(HttpHeaders.Values.APPLICATION_X_WWW_FORM_URLENCODED)) {
             try {
-                AccessToken accessToken = auth.issueAccessToken(request);
+            	TokenRequest tokenRequest = new TokenRequest(request, serverCredentials);
+                AccessToken accessToken = auth.issueAccessToken(request, tokenRequest);
+                CSRFAccessToken csrfToken = 
+                	new CSRFAccessToken(accessToken, tokenRequest.getState());
+                
                 if (accessToken != null) {
                     ObjectMapper mapper = new ObjectMapper();
-                    String jsonString = mapper.writeValueAsString(accessToken);
+                    String jsonString = mapper.writeValueAsString(csrfToken);
                     log.debug("access token:" + jsonString);
                     response = Response.createOkResponse(jsonString);
                     accessTokensLog.debug("token {}", jsonString);
@@ -219,6 +322,45 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             }
         } else {
             response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, Response.UNSUPPORTED_MEDIA_TYPE);
+        }
+        return response;
+    }
+	
+    protected HttpResponse handleToken(HttpRequest request) {
+        HttpResponse response = null;
+        String contentType = request.headers().get(HttpHeaders.Names.CONTENT_TYPE);
+        if (contentType != null && contentType.contains(HttpHeaders.Values.APPLICATION_X_WWW_FORM_URLENCODED)) {
+            try {
+				TokenRequest tokenRequest = new TokenRequest(request);
+                AccessToken accessToken = auth.issueAccessToken(request, tokenRequest);
+                CSRFAccessToken csrfToken = 
+                	new CSRFAccessToken(accessToken, tokenRequest.getState());
+					
+                if (accessToken != null) {
+                    ObjectMapper mapper = new ObjectMapper();
+                    String jsonString = mapper.writeValueAsString(csrfToken);
+                    log.debug("access token:" + jsonString);
+                    response = Response.createOkResponse(jsonString);
+                    accessTokensLog.debug("token {}", jsonString);
+                }
+            } catch (OAuthException ex) {
+                response = Response.createOAuthExceptionResponse(ex);
+                invokeExceptionHandler(ex, request);
+            } catch (JsonGenerationException e1) {
+                log.error("error handle token", e1);
+                invokeExceptionHandler(e1, request);
+            } catch (JsonMappingException e1) {
+                log.error("error handle token", e1);
+                invokeExceptionHandler(e1, request);
+            } catch (IOException e1) {
+                log.error("error handle token", e1);
+                invokeExceptionHandler(e1, request);
+            }
+            if (response == null) {
+                response = Response.createBadRequestResponse(Response.CANNOT_ISSUE_TOKEN); // TODO no STATE response
+            }
+        } else {
+            response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, Response.UNSUPPORTED_MEDIA_TYPE); // TODO no STATE response
         }
         return response;
     }
@@ -263,10 +405,9 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleAuthorize(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         try {
             String redirectURI = auth.issueAuthorizationCode(req);
-            // TODO: validation http protocol?
             log.debug("redirectURI: {}", redirectURI);
 
             // return auth_code
@@ -309,7 +450,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleTokenRevoke(HttpRequest req) {
-        boolean revoked = false;
+        boolean revoked;
         try {
             revoked = auth.revokeToken(req);
         } catch (OAuthException e) {
@@ -318,25 +459,24 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             return Response.createOAuthExceptionResponse(e);
         }
         String json = "{\"revoked\":\"" + revoked + "\"}";
-        HttpResponse response = Response.createOkResponse(json);
-        return response;
+
+        return Response.createOkResponse(json);
     }
 
     protected HttpResponse handleRegisterScope(HttpRequest req) {
         ScopeService scopeService = getScopeService();
-        HttpResponse response = null;
+
         try {
             String responseMsg = scopeService.registerScope(req);
-            response = Response.createOkResponse(responseMsg);
+            return Response.createOkResponse(responseMsg);
         } catch (OAuthException e) {
             invokeExceptionHandler(e, req);
-            response = Response.createResponse(e.getHttpStatus(), e.getMessage());
+            return Response.createResponse(e.getHttpStatus(), e.getMessage());
         }
-        return response;
     }
 
     protected HttpResponse handleUpdateScope(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         Matcher m = OAUTH_CLIENT_SCOPE_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String scopeName = m.group(1);
@@ -356,19 +496,18 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
     protected HttpResponse handleGetAllScopes(HttpRequest req) {
         ScopeService scopeService = getScopeService();
-        HttpResponse response = null;
+
         try {
             String jsonString = scopeService.getScopes(req);
-            response = Response.createOkResponse(jsonString);
+            return Response.createOkResponse(jsonString);
         } catch (OAuthException e) {
             invokeExceptionHandler(e, req);
-            response = Response.createResponse(e.getHttpStatus(), e.getMessage());
+            return Response.createResponse(e.getHttpStatus(), e.getMessage());
         }
-        return response;
     }
 
     protected HttpResponse handleGetScope(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         Matcher m = OAUTH_CLIENT_SCOPE_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String scopeName = m.group(1);
@@ -387,7 +526,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleDeleteScope(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         Matcher m = OAUTH_CLIENT_SCOPE_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String scopeName = m.group(1);
@@ -441,10 +580,9 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         Map<String, List<String>> params = dec.getParameters();
         if (params != null) {
             String status = QueryParameter.getFirstElement(params, "status");
-            Integer statusInt = null;
             if (status != null && !status.isEmpty()) {
                 try {
-                    statusInt = Integer.valueOf(status);
+                    Integer statusInt = Integer.valueOf(status);
                     for (ClientCredentials app : apps) {
                         if (app.getStatus() == statusInt) {
                             filteredApps.add(app);
@@ -462,7 +600,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleGetAccessTokens(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         QueryStringDecoder dec = new QueryStringDecoder(req.getUri());
         Map<String, List<String>> params = dec.getParameters();
         String clientId = QueryParameter.getFirstElement(params, QueryParameter.CLIENT_ID);
@@ -484,4 +622,12 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         }
         return response;
     }
+
+    @Override
+	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
+		throws Exception
+	{
+		log.error("Error report", e.getCause());
+		e.getChannel().close();
+	}    
 }
