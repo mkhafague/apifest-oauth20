@@ -51,29 +51,27 @@ import com.mongodb.WriteResult;
  */
 public class MongoDBManager implements DBManager {
 
-    protected static MongoClient mongoClient;
     protected static DB db;
 
     protected static Logger log = LoggerFactory.getLogger(DBManager.class);
 
     protected static final String CLIENTS_COLLECTION_NAME = "clients";
-    protected static final String ID_NAME = "_id";
-    protected static final String CLIENTS_ID_NAME = "clientId";
+    protected static final String CLIENTS_ID = "_id";
+    protected static final String CLIENTS_CLIENTID = "clientId";
+    protected static final String CLIENTS_NAME = "name";
 
     protected static final String AUTH_CODE_COLLECTION_NAME = "authCodes";
-    protected static final String AUTH_CODE_ID_NAME = "code";
+    protected static final String AUTH_CODE = "code";
 
     protected static final String ACCESS_TOKEN_COLLECTION_NAME = "accessTokens";
-    protected static final String ACCESS_TOKEN_ID_NAME = "token";
-
-    protected static final String REFRESH_TOKEN_ID_NAME = "refreshToken";
-    protected static final String VALID_NAME = "valid";
-    protected static final String REDIRECT_URI_NAME = "redirectUri";
-
+    protected static final String ACCESS_TOKEN_ID = "token";
+    protected static final String ACCESS_TOKEN_REFRESH_TOKEN_ID = "refreshToken";
+    protected static final String ACCESS_TOKEN_VALID = "valid";
+    protected static final String ACCESS_TOKEN_REDIRECT_URI = "redirectUri";
+    protected static final String ACCESS_TOKEN_USER_ID = "userId";
+	
     protected static final String SCOPE_COLLECTION_NAME = "scopes";
-    protected static final String SCOPE_ID_NAME = "name";
-
-    protected static final String USER_ID = "userId";
+    protected static final String SCOPE_NAME = "name";
 
     public MongoDBManager() {
         db = MongoUtil.getDB();
@@ -98,8 +96,27 @@ public class MongoDBManager implements DBManager {
     @SuppressWarnings("unchecked")
     @Override
     public ClientCredentials findClientCredentials(String clientId) {
-        BSONObject result = (BSONObject) findObjectById(clientId, ID_NAME, CLIENTS_COLLECTION_NAME);
+        BSONObject result = (BSONObject) findObjectById(clientId, CLIENTS_ID, CLIENTS_COLLECTION_NAME);
         if (result != null) {
+            Map<String, Object> mapLoaded = result.toMap();
+            ClientCredentials loadedCreds = ClientCredentials.loadFromMap(mapLoaded);
+            log.debug(loadedCreds.getName());
+            return loadedCreds;
+        } else {
+            return null;
+        }
+    }
+    
+    /*
+     * @see com.apifest.oauth20.DBManager#findClientCredentialsByName(java.lang.String)
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+    public ClientCredentials findClientCredentialsByName(String clientName) {
+    	DBCollection coll = db.getCollection(CLIENTS_COLLECTION_NAME);
+    	BasicDBObject query = new BasicDBObject("name", clientName);
+        BSONObject result = (BSONObject) getObject(coll, query);        
+		if (result != null) {
             Map<String, Object> mapLoaded = result.toMap();
             ClientCredentials loadedCreds = ClientCredentials.loadFromMap(mapLoaded);
             log.debug(loadedCreds.getName());
@@ -128,9 +145,9 @@ public class MongoDBManager implements DBManager {
     @Override
     public AuthCode findAuthCode(String authCode, String redirectUri) {
         BasicDBObject keys = new BasicDBObject();
-        keys.put(AUTH_CODE_ID_NAME, authCode);
-        keys.put(REDIRECT_URI_NAME, redirectUri);
-        keys.put(VALID_NAME, true);
+        keys.put(AUTH_CODE, authCode);
+        keys.put(ACCESS_TOKEN_REDIRECT_URI, redirectUri);
+        keys.put(ACCESS_TOKEN_VALID, true);
         DBCursor list = db.getCollection(AUTH_CODE_COLLECTION_NAME).find(new BasicDBObject(keys));
         while (list.hasNext()) {
             DBObject result = list.next();
@@ -163,8 +180,8 @@ public class MongoDBManager implements DBManager {
     @Override
     public AccessToken findAccessToken(String accessToken) {
         BasicDBObject dbObject = new BasicDBObject();
-        dbObject.put(ACCESS_TOKEN_ID_NAME, accessToken);
-        dbObject.put(VALID_NAME, true);
+        dbObject.put(ACCESS_TOKEN_ID, accessToken);
+        dbObject.put(ACCESS_TOKEN_VALID, true);
         DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
         List<DBObject> list = coll.find(dbObject).toArray();
         if (list.size() > 1) {
@@ -194,8 +211,8 @@ public class MongoDBManager implements DBManager {
     public AccessToken findAccessTokenByRefreshToken(String refreshToken, String clientId) {
         BasicDBObject dbObject = new BasicDBObject();
         // TODO: add indexes
-        dbObject.put(REFRESH_TOKEN_ID_NAME, refreshToken);
-        dbObject.put(CLIENTS_ID_NAME, clientId);
+        dbObject.put(ACCESS_TOKEN_REFRESH_TOKEN_ID, refreshToken);
+        dbObject.put(CLIENTS_CLIENTID, clientId);
         // Searching for unknown validity token -> no VALID query param
         DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
         List<DBObject> list = coll.find(dbObject).toArray();
@@ -250,7 +267,7 @@ public class MongoDBManager implements DBManager {
     @Override
     public boolean validClient(String clientId, String clientSecret) {
         DBCollection coll = db.getCollection(CLIENTS_COLLECTION_NAME);
-        BasicDBObject query = new BasicDBObject(ID_NAME, clientId);
+        BasicDBObject query = new BasicDBObject(CLIENTS_ID, clientId);
         BSONObject result = (BSONObject) getObject(coll, query);
         if (result != null) {
             return (result.get("secret").equals(clientSecret) && String.valueOf(ClientCredentials.ACTIVE_STATUS).equals(result.get("status")));
@@ -272,14 +289,14 @@ public class MongoDBManager implements DBManager {
         JsonObject jsonObj= parser.parse(json).getAsJsonObject();
         jsonObj.remove("scope");
         // use scope name as _id
-        jsonObj.addProperty(ID_NAME, id);
+        jsonObj.addProperty(CLIENTS_ID, id);
 
         try {
             // use ObjectMapper in order to represent expiresIn as integer not as double - 100 instead of 100.00
             Map<String, Object> result = new ObjectMapper().readValue(jsonObj.toString(), Map.class);
 
             // if scope already exits, updates it, otherwise creates the scope
-            BasicDBObject query = new BasicDBObject(ID_NAME, id);
+            BasicDBObject query = new BasicDBObject(CLIENTS_ID, id);
             BasicDBObject newObject = new BasicDBObject(result);
             DBCollection coll = db.getCollection(SCOPE_COLLECTION_NAME);
             coll.update(query, newObject, true, false);
@@ -318,7 +335,7 @@ public class MongoDBManager implements DBManager {
     @Override
     @SuppressWarnings("unchecked")
     public Scope findScope(String scopeName) {
-        BSONObject result = (BSONObject) findObjectById(scopeName, ID_NAME, SCOPE_COLLECTION_NAME);
+        BSONObject result = (BSONObject) findObjectById(scopeName, CLIENTS_ID, SCOPE_COLLECTION_NAME);
         if (result != null) {
             return Scope.loadFromMap(result.toMap());
         } else {
@@ -347,7 +364,7 @@ public class MongoDBManager implements DBManager {
         if(jsonObj.has("id")) {
             String id = jsonObj.get("id").getAsString();
             jsonObj.remove("id");
-            jsonObj.addProperty(ID_NAME, id);
+            jsonObj.addProperty(CLIENTS_ID, id);
         }
         return jsonObj.toString();
     }
@@ -382,7 +399,7 @@ public class MongoDBManager implements DBManager {
     public boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails) {
         boolean updated = false;
         DBCollection coll = db.getCollection(CLIENTS_COLLECTION_NAME);
-        BasicDBObject query = new BasicDBObject(ID_NAME, clientId);
+        BasicDBObject query = new BasicDBObject(CLIENTS_ID, clientId);
         List<DBObject> list = coll.find(query).toArray();
         if (list.size() > 0) {
             DBObject newObject = list.get(0);
@@ -414,8 +431,7 @@ public class MongoDBManager implements DBManager {
         DBCollection coll = db.getCollection(CLIENTS_COLLECTION_NAME);
         List<DBObject> result = coll.find().toArray();
         for (DBObject obj : result) {
-            BSONObject bson = obj;
-            Map<String, Object> mapLoaded = bson.toMap();
+            Map<String, Object> mapLoaded = obj.toMap();
             ClientCredentials loadedCreds = ClientCredentials.loadFromMap(mapLoaded);
             list.add(loadedCreds);
         }
@@ -428,7 +444,7 @@ public class MongoDBManager implements DBManager {
     @Override
     public boolean deleteScope(String scopeName) {
         DBCollection coll = db.getCollection(SCOPE_COLLECTION_NAME);
-        BasicDBObject query = new BasicDBObject(ID_NAME, scopeName);
+        BasicDBObject query = new BasicDBObject(CLIENTS_ID, scopeName);
         WriteResult result = coll.remove(query);
         return (result.getN() == 1);
     }
@@ -442,9 +458,9 @@ public class MongoDBManager implements DBManager {
         List<AccessToken> accessTokens = new ArrayList<AccessToken>();
         BasicDBObject dbObject = new BasicDBObject();
         // TODO: add indexes
-        dbObject.put(USER_ID, userId);
-        dbObject.put(CLIENTS_ID_NAME, clientId);
-        dbObject.put(VALID_NAME, true);
+        dbObject.put(ACCESS_TOKEN_USER_ID, userId);
+        dbObject.put(CLIENTS_CLIENTID, clientId);
+        dbObject.put(ACCESS_TOKEN_VALID, true);
         DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
         List<DBObject> list = coll.find(dbObject).toArray();
         for (DBObject object : list) {
@@ -462,7 +478,7 @@ public class MongoDBManager implements DBManager {
 
     @Override
     public void removeAccessToken(String accessToken) {
-        BasicDBObject dbObject = new BasicDBObject(ACCESS_TOKEN_ID_NAME, accessToken);
+        BasicDBObject dbObject = new BasicDBObject(ACCESS_TOKEN_ID, accessToken);
         DBCollection coll = db.getCollection(ACCESS_TOKEN_COLLECTION_NAME);
         coll.remove(dbObject);
     }

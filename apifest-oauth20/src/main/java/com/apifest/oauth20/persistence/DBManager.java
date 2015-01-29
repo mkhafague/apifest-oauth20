@@ -102,13 +102,21 @@ public interface DBManager {
     AuthCode findAuthCode(String authCode, String redirectUri);
 
     /**
-     * Loads a client credentials from DB by passed clientId.
+     * Loads a client credentials from DB by provided clientId.
      *
      * @param clientId client id
      * @return client credentials object that will be stored in the DB
      */
     ClientCredentials findClientCredentials(String clientId);
-
+    
+	/**
+     * Loads a client credentials from DB by provided clientName.
+     *
+     * @param clientName client name
+     * @return client credentials object that will be stored in the DB
+     */
+    ClientCredentials findClientCredentialsByName(String clientName);
+	
     /**
      *
      * Stores OAuth20 scope in the DB.

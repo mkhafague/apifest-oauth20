@@ -26,7 +26,6 @@ import java.util.Map;
 
 import com.apifest.oauth20.ClientCredentials;
 import com.apifest.oauth20.Scope;
-import com.apifest.oauth20.persistence.mongodb.MongoDBManager;
 import org.bson.BSONObject;
 import org.slf4j.Logger;
 import org.testng.annotations.BeforeMethod;
@@ -97,14 +96,14 @@ public class MongoDBManagerTest {
         map.put("applicationDetails", "{\"my\":\"param\"}");
 
         willReturn(map).given(bson).toMap();
-        willReturn(bson).given(dbManager).findObjectById(cred.getId(), MongoDBManager.ID_NAME,
+        willReturn(bson).given(dbManager).findObjectById(cred.getId(), MongoDBManager.CLIENTS_ID,
                 MongoDBManager.CLIENTS_COLLECTION_NAME);
 
         // WHEN
         dbManager.findClientCredentials(cred.getId());
 
         // THEN
-        verify(dbManager).findObjectById(cred.getId(), MongoDBManager.ID_NAME,
+        verify(dbManager).findObjectById(cred.getId(), MongoDBManager.CLIENTS_ID,
                 MongoDBManager.CLIENTS_COLLECTION_NAME);
     }
 
@@ -116,7 +115,7 @@ public class MongoDBManagerTest {
         given(db.getCollection(MongoDBManager.CLIENTS_COLLECTION_NAME)).willReturn(coll);
 
         // WHEN
-        dbManager.findObjectById(cred.getId(), MongoDBManager.CLIENTS_ID_NAME,
+        dbManager.findObjectById(cred.getId(), MongoDBManager.CLIENTS_CLIENTID,
                 MongoDBManager.CLIENTS_COLLECTION_NAME);
 
         // THEN
@@ -127,7 +126,7 @@ public class MongoDBManagerTest {
     public void when_no_object_found_find_by_id_return_null() throws Exception {
         // GIVEN
         ClientCredentials cred = new ClientCredentials("Test", "basic", "descr", "http://example.com", null);
-        willReturn(null).given(dbManager).findObjectById(cred.getId(), MongoDBManager.ID_NAME,
+        willReturn(null).given(dbManager).findObjectById(cred.getId(), MongoDBManager.CLIENTS_ID,
                 MongoDBManager.CLIENTS_COLLECTION_NAME);
 
         // WHEN
@@ -218,7 +217,7 @@ public class MongoDBManagerTest {
     @Test
     public void when_scope_not_found_return_null() throws Exception {
         // GIVEN
-        willReturn(null).given(dbManager).findObjectById("basic", MongoDBManager.ID_NAME, MongoDBManager.SCOPE_COLLECTION_NAME);
+        willReturn(null).given(dbManager).findObjectById("basic", MongoDBManager.CLIENTS_ID, MongoDBManager.SCOPE_COLLECTION_NAME);
 
         // WHEN
         Scope scope = dbManager.findScope("basic");

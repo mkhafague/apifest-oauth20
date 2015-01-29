@@ -59,7 +59,6 @@ import com.hazelcast.query.PredicateBuilder;
  * This class implements a persistent storage layer using the Hazelcast Cache.
  *
  * @author Apostol Terziev
- *
  */
 public class HazelcastDBManager implements DBManager {
 
@@ -80,6 +79,7 @@ public class HazelcastDBManager implements DBManager {
         config.setGroupConfig(groupConfig);
         config.setMapConfigs(createMapConfigs());
         hazelcastClient = Hazelcast.newHazelcastInstance(config);
+		hazelcastClient.getMap(APIFEST_CLIENT).addIndex("name", false);
         hazelcastClient.getMap(APIFEST_AUTH_CODE).addIndex("codeURI", false);
         hazelcastClient.getMap(APIFEST_ACCESS_TOKEN).addIndex("refreshTokenByClient", false);
         hazelcastClient.getMap(APIFEST_ACCESS_TOKEN).addIndex("accessTokenByUserIdAndClient", false);
@@ -381,6 +381,24 @@ public class HazelcastDBManager implements DBManager {
         return accessTokens;
     }
 
+    /*
+     * @see com.apifest.oauth20.persistence.DBManager#findClientCredentialsByName(java.lang.String)
+     */
+    @Override
+    @SuppressWarnings("unchecked")
+	public ClientCredentials findClientCredentialsByName(String clientName) {
+    	EntryObject eo = new PredicateBuilder().getEntryObject();
+        Predicate<String, String> predicate = eo.get("name").equal(clientName);
+        Collection<PersistentClientCredentials> values = getClientCredentialsContainer().values(predicate);
+        if (!values.isEmpty()) {
+        	return PersistenceTransformations.toClientCredentials(values.iterator().next());
+        }
+        return null;
+    }
+    
+    /*
+     * @see com.apifest.oauth20.persistence.DBManager#removeAccessToken(java.lang.String)
+     */	
     @Override
     public void removeAccessToken(String accessToken) {
         getAccessTokenContainer().remove(accessToken);

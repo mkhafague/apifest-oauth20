@@ -18,10 +18,10 @@ package com.apifest.oauth20.persistence.mongodb;
 
 import java.net.UnknownHostException;
 
-import com.apifest.oauth20.OAuthServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.apifest.oauth20.OAuthServer;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -34,15 +34,17 @@ import com.mongodb.MongoClientOptions;
  */
 public class MongoUtil {
 
+	private static String DEFAULT_DATABASE_NAME = "apifest";
+	
     private static MongoClient mongoClient;
-    private static String database = "apifest";
+	private static String database = DEFAULT_DATABASE_NAME;
     private static Logger log = LoggerFactory.getLogger(MongoUtil.class);
 
     public static MongoClient getMongoClient() {
         if (mongoClient == null) {
             try {
                 MongoClientOptions.Builder options = new MongoClientOptions.Builder()
-                        .connectionsPerHost(100).connectTimeout(2)
+                        .connectionsPerHost(100).connectTimeout(2000)
                         .threadsAllowedToBlockForConnectionMultiplier(1);
                 final MongoClientURI mongoClientURI  = new MongoClientURI(OAuthServer.getDbHost(), options);
                 mongoClient = new MongoClient(mongoClientURI);
