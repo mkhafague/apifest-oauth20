@@ -1134,7 +1134,7 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(errorMsg, Response.SCOPE_NOK_MESSAGE);
-        assertTrue(httpStatus == HttpStatus.SC_BAD_REQUEST);
+        assertEquals(httpStatus, Integer.valueOf(HttpStatus.SC_BAD_REQUEST));
     }
 
     @Test

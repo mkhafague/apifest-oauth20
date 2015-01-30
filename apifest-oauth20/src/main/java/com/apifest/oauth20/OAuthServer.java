@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
@@ -65,6 +66,8 @@ import com.apifest.oauth20.security.SubnetRange;
  */
 public final class OAuthServer {
 
+    protected static Logger log = LoggerFactory.getLogger(OAuthServer.class);
+
     private static String customJar;
     private static String userAuthClass;
     private static Class<IUserAuthentication> userAuthenticationClass;
@@ -83,6 +86,8 @@ public final class OAuthServer {
 
     private static SslContext sslCtx;
     private static SSLContext serverContext;
+    private static SelfSignedCertificate ssc;
+
     private static SubnetRange allowedIPs;
     private static boolean productionMode;
     private static Map<String, String> serverCredentials;
@@ -94,11 +99,8 @@ public final class OAuthServer {
     public static final int DEFAULT_CC_EXPIRES_IN = 1800;
 
     public static final String OAUTH2_SERVER_CLIENT_NAME = "Oauth2Server";
-    
-    static Logger log = LoggerFactory.getLogger(OAuthServer.class);
 
-    private OAuthServer() {
-    }
+    private static final ReentrantLock lock = new ReentrantLock();
 
     public static void main(String[] args) throws Exception {
         if (!loadConfig()) {
@@ -360,7 +362,24 @@ public final class OAuthServer {
     	// Should return some default info ?
     	return null;
     }
-    
+
+    private static void buildSelfSignedCertificate() {
+        lock.lock();
+        try {
+            if (ssc == null) {
+                try {
+                    String fqdn = InetAddress.getLocalHost().getCanonicalHostName();
+                    log.info("Running on host [" + fqdn + "] ...");
+                    ssc = new SelfSignedCertificate(fqdn);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
     protected static void configureSSL(String keystorePath, String password, String algorithm)
     	throws IOException
     {
@@ -383,11 +402,8 @@ public final class OAuthServer {
 			}
     	}
     	else {
-            String fqdn;
             try {
-            	fqdn = InetAddress.getLocalHost().getCanonicalHostName();
-            	log.info("Running on host ["+fqdn+"] ...");
-                SelfSignedCertificate ssc = new SelfSignedCertificate(fqdn);
+                buildSelfSignedCertificate();
                 sslCtx = SslContext.newServerContext(ssc.certificate(), ssc.privateKey());
             }
             catch (Exception e) {
