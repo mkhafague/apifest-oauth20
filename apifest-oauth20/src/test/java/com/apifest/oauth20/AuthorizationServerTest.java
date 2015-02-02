@@ -87,7 +87,7 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
-        assertEquals(message, Response.INVALID_CLIENT_ID);
+        assertEquals(message, new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS).toString());
     }
 
     @Test
@@ -109,7 +109,7 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
-        assertEquals(message, Response.RESPONSE_TYPE_NOT_SUPPORTED);
+        assertEquals(message, new TokenError(TokenErrorTypes.UNSUPPORTED_RESPONSE_TYPE).toString());
     }
 
     @Test
@@ -133,7 +133,7 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
-        assertEquals(message, Response.INVALID_REDIRECT_URI);
+        assertEquals(message, new TokenError(TokenErrorTypes.INVALID_REDIRECT_URI).toString());
     }
 
     @Test
@@ -295,7 +295,7 @@ public class AuthorizationServerTest {
 
         // THEN
         verify(authServer).findAuthCode(any(TokenRequest.class));
-        assertEquals(errorMsg, Response.INVALID_CLIENT_ID);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS).toString());
     }
 
     @Test
@@ -373,7 +373,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INVALID_AUTH_CODE);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_AUTH_CODE).toString());
     }
 
     @Test
@@ -418,7 +418,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         willDoNothing().given(authServer.db).storeClientCredentials(any(ClientCredentials.class));
         willReturn(mock(Scope.class)).given(authServer.db).findScope("basic");
@@ -438,7 +438,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         willDoNothing().given(authServer.db).storeClientCredentials(any(ClientCredentials.class));
         willReturn(null).given(authServer.db).findScope("basic");
@@ -453,7 +453,7 @@ public class AuthorizationServerTest {
 
         // THEN
         verify(authServer.db, never()).storeClientCredentials(any(ClientCredentials.class));
-        assertEquals(errorMsg, Response.SCOPE_NOT_EXIST);
+        assertEquals(errorMsg, ScopeService.SCOPE_DOES_NOT_EXIST_ERROR);
     }
 
     @Test
@@ -464,7 +464,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         willDoNothing().given(authServer.db).storeClientCredentials(any(ClientCredentials.class));
         willReturn(mock(Scope.class)).given(authServer.db).findScope("basic");
@@ -486,7 +486,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
 
         // WHEN
@@ -498,7 +498,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -509,7 +509,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
 
         // WHEN
@@ -521,7 +521,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -532,7 +532,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
 
         // WHEN
@@ -544,7 +544,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -555,7 +555,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
 
         // WHEN
@@ -567,7 +567,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -670,7 +670,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INVALID_CLIENT_ID);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS).toString());
     }
 
     @Test
@@ -710,7 +710,7 @@ public class AuthorizationServerTest {
 
         // THEN
         verify(authServer).findAuthCode(any(TokenRequest.class));
-        assertEquals(errorMsg, Response.INVALID_REDIRECT_URI);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_REDIRECT_URI).toString());
     }
 
     @Test
@@ -809,7 +809,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INVALID_USERNAME_PASSWORD);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_USERNAME_PASSWORD).toString());
     }
 
     @Test
@@ -1083,7 +1083,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INVALID_CLIENT_CREDENTIALS);
+        assertEquals(errorMsg, Response.INACTIVE_CLIENT_CREDENTIALS);
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
     }
 
@@ -1133,7 +1133,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.SCOPE_NOK_MESSAGE);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_SCOPE).toString());
         assertEquals(httpStatus, Integer.valueOf(HttpStatus.SC_BAD_REQUEST));
     }
 
@@ -1185,7 +1185,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.SCOPE_NOK_MESSAGE);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_SCOPE).toString());
     }
 
     @Test
@@ -1230,7 +1230,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.SCOPE_NOK_MESSAGE);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_SCOPE).toString());
     }
 
     @Test
@@ -1317,7 +1317,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.SCOPE_NOK_MESSAGE);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_SCOPE).toString());
     }
 
     @Test
@@ -1331,7 +1331,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         Scope scope = new Scope();
         willReturn(scope).given(authServer.db).findScope("basic");
@@ -1354,7 +1354,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         Scope scope = new Scope();
         willReturn(scope).given(authServer.db).findScope("basic");
@@ -1376,7 +1376,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         Scope scope = new Scope();
         willReturn(scope).given(authServer.db).findScope("basic");
@@ -1399,7 +1399,7 @@ public class AuthorizationServerTest {
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
         willReturn(buf).given(req).getContent();
         HttpHeaders headers = mock(HttpHeaders.class);
-        willReturn("application/json").given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
+        willReturn(Response.APPLICATION_JSON).given(headers).get(HttpHeaders.Names.CONTENT_TYPE);
         willReturn(headers).given(req).headers();
         Scope scope = new Scope();
         willReturn(scope).given(authServer.db).findScope("basic");
@@ -1461,7 +1461,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INVALID_CLIENT_CREDENTIALS);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_CLIENT_CREDENTIALS).toString());
     }
 
     @Test
@@ -1485,7 +1485,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INVALID_CLIENT_CREDENTIALS);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_CLIENT_CREDENTIALS).toString());
     }
 
     @Test
@@ -1533,7 +1533,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.SCOPE_NOK_MESSAGE);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_SCOPE).toString());
     }
 
     @Test
@@ -1567,7 +1567,7 @@ public class AuthorizationServerTest {
         // GIVEN
         String clientId = "203598599234220";
         HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT, HttpRequestHandler.APPLICATION_URI + "/" + clientId);
-        req.headers().add(HttpHeaders.Names.CONTENT_TYPE, "application/json");
+        req.headers().add(HttpHeaders.Names.CONTENT_TYPE, Response.APPLICATION_JSON);
         String content = "any content here";
         req.setContent(ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8)));
         willReturn(false).given(authServer).isExistingClient(clientId);
@@ -1584,7 +1584,7 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
-        assertEquals(message, Response.INVALID_CLIENT_ID);
+        assertEquals(message, Response.INACTIVE_CLIENT_CREDENTIALS);
         verify(authServer).isExistingClient(clientId);
     }
 
@@ -1671,7 +1671,7 @@ public class AuthorizationServerTest {
         String clientId = "203598599234220";
         HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.PUT,
                 HttpRequestHandler.APPLICATION_URI + "/" + clientId);
-        req.headers().add(HttpHeaders.Names.CONTENT_TYPE, "application/json");
+        req.headers().add(HttpHeaders.Names.CONTENT_TYPE, Response.APPLICATION_JSON);
         String content = "{\"status\":\"1\"}";
         req.setContent(ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8)));
         willReturn(true).given(authServer).isExistingClient(clientId);

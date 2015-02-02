@@ -59,8 +59,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg,
-                String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.GRANT_TYPE));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.GRANT_TYPE);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -82,7 +83,7 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.GRANT_TYPE_NOT_SUPPORTED);
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.UNSUPPORTED_GRANT_TYPE).toString());
     }
 
     @Test
@@ -104,7 +105,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.CODE));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.CODE);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -127,8 +130,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg,
-                String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.REDIRECT_URI));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.REDIRECT_URI);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -149,8 +153,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg,
-                String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.CLIENT_ID));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.CLIENT_ID);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -185,8 +190,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg,
-                String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.REFRESH_TOKEN));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.REFRESH_TOKEN);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -207,8 +213,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg,
-                String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.USERNAME));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.USERNAME);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -229,8 +236,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg,
-                String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.PASSWORD));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.PASSWORD);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -251,7 +259,9 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.CLIENT_ID));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.CLIENT_ID);
+        assertEquals(errorMsg, err.toString());
     }
 
     @Test
@@ -272,6 +282,8 @@ public class TokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, TokenRequest.GRANT_TYPE));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(TokenRequest.GRANT_TYPE);
+        assertEquals(errorMsg, err.toString());
     }
 }

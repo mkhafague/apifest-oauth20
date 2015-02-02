@@ -31,32 +31,23 @@ import org.jboss.netty.util.CharsetUtil;
  * @author Rossitsa Borissova
  */
 public final class Response {
-    public static final String CANNOT_REGISTER_APP = "{\"error\": \"cannot issue client_id and client_secret\"}";
-    public static final String NAME_OR_SCOPE_OR_URI_IS_NULL = "{\"error\": \"name, scope or redirect_uri is missing or invalid\"}";
-    public static final String SCOPE_NOT_EXIST = "{\"error\": \"scope does not exist\"}";
-    public static final String INVALID_CLIENT_ID = "{\"error\": \"invalid client_id/client_secret\"}";
-    public static final String INVALID_CLIENT_CREDENTIALS = "{\"error\": \"invalid client_id/client_secret\"}";
-    public static final String RESPONSE_TYPE_NOT_SUPPORTED = "{\"error\": \"unsupported_response_type\"}";
-    public static final String INVALID_REDIRECT_URI = "{\"error\": \"invalid redirect_uri\"}";
-    public static final String MANDATORY_PARAM_MISSING = "{\"error\": \"mandatory paramater %s is missing\"}";
-    public static final String CANNOT_ISSUE_TOKEN = "{\"error\": \"cannot issue token\"}";
-    public static final String INVALID_AUTH_CODE = "{\"error\": \"invalid auth_code\"}";
-    public static final String GRANT_TYPE_NOT_SUPPORTED = "{\"error\": \"unsupported_grant_type\"}";
-    public static final String INVALID_ACCESS_TOKEN = "{\"error\":\"invalid access token\"}";
-    public static final String INVALID_REFRESH_TOKEN = "{\"error\":\"invalid refresh token\"}";
-    public static final String INVALID_USERNAME_PASSWORD = "{\"error\": \"invalid username/password\"}";
-    public static final String CANNOT_AUTHENTICATE_USER = "{\"error\": \"cannot authenticate user\"}";
-    public static final String NOT_FOUND_CONTENT = "{\"error\":\"Not found\"}";
-    public static final String UNSUPPORTED_MEDIA_TYPE = "{\"error\":\"unsupported media type\"}";
-    public static final String CANNOT_UPDATE_APP = "{\"error\": \"cannot update client application\"}";
-    public static final String UPDATE_APP_MANDATORY_PARAM_MISSING = "{\"error\": \"scope, description or status is missing or invalid\"}";
-    public static final String ALREADY_REGISTERED_APP = "{\"error\": \"already registered client application\"}";
-    public static final String CLIENT_APP_NOT_EXIST = "{\"error\": \"client application does not exist\"}";
-    public static final String SCOPE_NOK_MESSAGE = "{\"status\":\"scope not valid\"}";
-    public static final String CLIENT_APP_UPDATED = "{\"status\":\"client application updated\"}";
 
     public static final String APPLICATION_JSON = "application/json";
+    public static final String NOT_FOUND = "{\"error\":\"not found\"}";
+    public static final String UNSUPPORTED_MEDIA_TYPE = "{\"error\": \"unsupported media type\"}";
+    public static final String MANDATORY_PARAM_MISSING = "{\"error\": \"mandatory parameter %s is missing\"}";
 
+    // application errors
+    public static final String CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL = "{\"error\": \"name, scope or redirect_uri is missing or invalid\"}";
+    public static final String CANNOT_UPDATE_APP = "{\"error\": \"cannot update client application\"}";
+    public static final String CANNOT_REGISTER_APP = "{\"error\": \"cannot register client application\"}";
+    public static final String UPDATE_APP_MANDATORY_PARAM_MISSING = "{\"error\": \"scope, description or status is missing or invalid\"}";
+    public static final String ALREADY_REGISTERED_APP = "{\"error\": \"already registered client application\"}";
+    public static final String CLIENT_APP_DOES_NOT_EXIST = "{\"error\": \"client application does not exist\"}";
+    public static final String INACTIVE_CLIENT_CREDENTIALS = "{\"error\": \"client is inactive\"}";
+    public static final String INVALID_CLIENT_CREDENTIALS = "{\"error\": \"invalid client_id/client_secret\"}";
+    // client credentials message TODO move to cc service ?
+    public static final String CLIENT_APP_UPDATED = "{\"status\":\"client application updated\"}";
 
     public static HttpResponse createBadRequestResponse() {
         return createBadRequestResponse(null);
@@ -67,11 +58,15 @@ public final class Response {
     }
 
     public static HttpResponse createNotFoundResponse() {
-        return createResponse(HttpResponseStatus.NOT_FOUND, Response.NOT_FOUND_CONTENT);
+        return createResponse(HttpResponseStatus.NOT_FOUND, Response.NOT_FOUND);
     }
 
     public static HttpResponse createOkResponse(String jsonString) {
         return createResponse(HttpResponseStatus.OK, jsonString);
+    }
+
+    public static HttpResponse createTokenErrorResponse(TokenError err) {
+        return createResponse(HttpResponseStatus.BAD_REQUEST, err.toString());
     }
 
     public static HttpResponse createOAuthExceptionResponse(OAuthException ex) {
@@ -79,7 +74,7 @@ public final class Response {
     }
 
     public static HttpResponse createUnauthorizedResponse() {
-        return createResponse(HttpResponseStatus.UNAUTHORIZED, Response.INVALID_ACCESS_TOKEN);
+        return createResponse(HttpResponseStatus.UNAUTHORIZED, new TokenError(TokenErrorTypes.UNAUTHORIZED_CLIENT).toString());
     }
 
     public static HttpResponse createResponse(HttpResponseStatus status, String message) {

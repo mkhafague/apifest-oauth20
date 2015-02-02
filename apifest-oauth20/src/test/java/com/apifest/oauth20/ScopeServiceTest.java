@@ -361,11 +361,11 @@ public class ScopeServiceTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ScopeService.SCOPE_ALREADY_EXISTS);
+        assertEquals(errorMsg, ScopeService.SCOPE_ALREADY_EXISTS_MESSAGE);
     }
 
     @Test
-    public void when_scope_not_valid_rerutn_error() throws Exception {
+    public void when_scope_not_valid_return_error() throws Exception {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
         String scopeName = "registered";
@@ -386,7 +386,7 @@ public class ScopeServiceTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ScopeService.MANDATORY_FIELDS_ERROR);
+        assertEquals(errorMsg, ScopeService.MANDATORY_FIELDS_FOR_SCOPE_REGISTER_ERROR);
     }
 
     @Test
@@ -480,7 +480,7 @@ public class ScopeServiceTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ScopeService.SCOPE_NOT_EXIST);
+        assertEquals(errorMsg, ScopeService.SCOPE_NOT_EXISTS_MESSAGE);
     }
 
     @Test
@@ -706,7 +706,7 @@ public class ScopeServiceTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ScopeService.SCOPE_NAME_INVALID_ERROR);
+        assertEquals(errorMsg, ScopeService.INVALID_SCOPE_NAME_ERROR);
     }
 
     @Test
@@ -754,7 +754,7 @@ public class ScopeServiceTest {
         // THEN
         assertNotNull(exception);
         assertEquals(exception.getHttpStatus(), HttpResponseStatus.BAD_REQUEST);
-        assertEquals(exception.getMessage(), ScopeService.SCOPE_NOT_EXIST);
+        assertEquals(exception.getMessage(), ScopeService.SCOPE_NOT_EXISTS_MESSAGE);
     }
 
     @Test
@@ -810,7 +810,7 @@ public class ScopeServiceTest {
         // GIVEN
         String clientId = "203598599234220";
         HttpRequest req = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, HttpRequestHandler.OAUTH_CLIENT_SCOPE_URI + "?client_id=" + clientId);
-        req.headers().add(HttpHeaders.Names.CONTENT_TYPE, "application/json");
+        req.headers().add(HttpHeaders.Names.CONTENT_TYPE, Response.APPLICATION_JSON);
         String content = "any content here";
         req.setContent(ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8)));
         willReturn(null).given(DBManagerFactory.dbManager).findClientCredentials(clientId);
@@ -845,7 +845,7 @@ public class ScopeServiceTest {
         }
 
         // THEN
-        assertEquals(errorMessage, ScopeService.SCOPE_NOT_EXIST);
+        assertEquals(errorMessage, ScopeService.SCOPE_NOT_EXISTS_MESSAGE);
         assertEquals(errorStatus, HttpResponseStatus.NOT_FOUND);
     }
 

@@ -92,11 +92,12 @@ public class AuthRequest {
 
     public void validate() throws OAuthException {
         if (!RESPONSE_TYPE_CODE.equals(responseType)) {
-            throw new OAuthException(Response.RESPONSE_TYPE_NOT_SUPPORTED, state,
+            throw new OAuthException(new TokenError(TokenErrorTypes.UNSUPPORTED_RESPONSE_TYPE, state),
                     HttpResponseStatus.BAD_REQUEST);
         }
         if (!isValidURI(redirectUri)) {
-            throw new OAuthException(Response.INVALID_REDIRECT_URI, state, HttpResponseStatus.BAD_REQUEST);
+            throw new OAuthException(new TokenError(TokenErrorTypes.INVALID_REDIRECT_URI, state),
+                    HttpResponseStatus.BAD_REQUEST);
         }
     }
 

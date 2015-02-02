@@ -110,44 +110,50 @@ public class TokenRequest {
         if (!grantType.equals(AUTHORIZATION_CODE) && !grantType.equals(REFRESH_TOKEN)
                 && !grantType.equals(CLIENT_CREDENTIALS) && !grantType.equals(PASSWORD)
                 && !grantType.equals(OAuthServer.getCustomGrantType())) {
-            throw new OAuthException(Response.GRANT_TYPE_NOT_SUPPORTED, state,
-                    HttpResponseStatus.BAD_REQUEST);
+            TokenError err = new TokenError(TokenErrorTypes.UNSUPPORTED_GRANT_TYPE, state);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
         if (grantType.equals(AUTHORIZATION_CODE)) {
             if (code == null) {
-                throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, CODE), state,
-                        HttpResponseStatus.BAD_REQUEST);
+                TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+                err.setMessageParams(CODE);
+                throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
             }
             if (redirectUri == null) {
-                throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING,
-                        REDIRECT_URI), state, HttpResponseStatus.BAD_REQUEST);
+                TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+                err.setMessageParams(REDIRECT_URI);
+                throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
             }
         }
         if (grantType.equals(REFRESH_TOKEN) && refreshToken == null) {
-            throw new OAuthException(
-                    String.format(Response.MANDATORY_PARAM_MISSING, REFRESH_TOKEN), state,
-                    HttpResponseStatus.BAD_REQUEST);
+            TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+            err.setMessageParams(REFRESH_TOKEN);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
         if (grantType.equals(PASSWORD)) {
             if (username == null) {
-                throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, USERNAME), state,
-                        HttpResponseStatus.BAD_REQUEST);
+                TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+                err.setMessageParams(USERNAME);
+                throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
             }
             if (password == null) {
-                throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, PASSWORD), state,
-                        HttpResponseStatus.BAD_REQUEST);
+                TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+                err.setMessageParams(PASSWORD);
+                throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
             }
         }
     }
 
     protected void checkMandatoryParams() throws OAuthException {
         if (clientId == null || clientId.isEmpty()) {
-            throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, CLIENT_ID), state,
-                    HttpResponseStatus.BAD_REQUEST);
+            TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+            err.setMessageParams(CLIENT_ID);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
         if (grantType == null || grantType.isEmpty()) {
-            throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, GRANT_TYPE), state,
-                    HttpResponseStatus.BAD_REQUEST);
+            TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+            err.setMessageParams(GRANT_TYPE);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
     }
 

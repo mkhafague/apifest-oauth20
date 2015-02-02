@@ -103,7 +103,9 @@ public class RevokeTokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, RevokeTokenRequest.ACCESS_TOKEN));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(RevokeTokenRequest.ACCESS_TOKEN);
+        assertEquals(errorMsg, err.toString());
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
     }
 
@@ -128,7 +130,9 @@ public class RevokeTokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, RevokeTokenRequest.ACCESS_TOKEN));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(RevokeTokenRequest.ACCESS_TOKEN);
+        assertEquals(errorMsg, err.toString());
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
     }
 
@@ -153,7 +157,9 @@ public class RevokeTokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, RevokeTokenRequest.CLIENT_ID));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(RevokeTokenRequest.CLIENT_ID);
+        assertEquals(errorMsg, err.toString());
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
     }
 
@@ -178,7 +184,9 @@ public class RevokeTokenRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, String.format(Response.MANDATORY_PARAM_MISSING, RevokeTokenRequest.CLIENT_ID));
+        TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+        err.setMessageParams(RevokeTokenRequest.CLIENT_ID);
+        assertEquals(errorMsg, err.toString());
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
     }
 

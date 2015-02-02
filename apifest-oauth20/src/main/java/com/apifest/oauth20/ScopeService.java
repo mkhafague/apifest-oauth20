@@ -44,15 +44,19 @@ public class ScopeService {
 
     static Logger log = LoggerFactory.getLogger(ScopeService.class);
 
-    protected static final String MANDATORY_FIELDS_ERROR = "{\"error\":\"scope, description, cc_expires_in and pass_expires_in are mandatory\"}";
-    protected static final String MANDATORY_SCOPE_ERROR = "{\"error\":\"scope is mandatory\"}";
-    protected static final String SCOPE_NAME_INVALID_ERROR = "{\"error\":\"scope name not valid - it may contain aplha-numeric, - and _\"}";
+    protected static final String MANDATORY_FIELDS_FOR_SCOPE_REGISTER_ERROR = "{\"error\":\"invalid mandatory fields for scope registration\"}";
+    protected static final String MANDATORY_FIELDS_FOR_SCOPE_UPDATE_ERROR = "{\"error\":\"invalid mandatory fields for scope update\"}";
+    protected static final String INVALID_SCOPE_NAME_ERROR = "{\"error\":\"invalid scope name - it may contain alpha-numeric, - and _ characters\"}";
+    protected static final String INVALID_SCOPE_ERROR = "{\"error\":\"invalid scope\"}";
+    protected static final String SCOPE_DOES_NOT_EXIST_ERROR = "{\"error\":\"scope does not exist\"}";
+    protected static final String NO_SCOPES_ERROR = "{\"error\":\"scope does not exist\"}";
+
     protected static final String SCOPE_STORED_OK_MESSAGE = "{\"status\":\"scope successfully stored\"}";
     protected static final String SCOPE_STORED_NOK_MESSAGE = "{\"status\":\"scope not stored\"}";
     protected static final String SCOPE_UPDATED_OK_MESSAGE = "{\"status\":\"scope successfully updated\"}";
     protected static final String SCOPE_UPDATED_NOK_MESSAGE = "{\"status\":\"scope not updated\"}";
-    protected static final String SCOPE_NOT_EXIST = "{\"status\":\"scope does not exist\"}";
-    protected static final String SCOPE_ALREADY_EXISTS = "{\"status\":\"scope already exists\"}";
+    protected static final String SCOPE_NOT_EXISTS_MESSAGE = "{\"status\":\"scope does not exist\"}";
+    protected static final String SCOPE_ALREADY_EXISTS_MESSAGE = "{\"status\":\"scope already exists\"}";
     protected static final String SCOPE_DELETED_OK_MESSAGE = "{\"status\":\"scope successfully deleted\"}";
     protected static final String SCOPE_DELETED_NOK_MESSAGE = "{\"status\":\"scope not deleted\"}";
     protected static final String SCOPE_USED_BY_APP_MESSAGE = "{\"status\":\"scope cannot be deleted, there are client apps registered with it\"}";
@@ -77,12 +81,12 @@ public class ScopeService {
                 if (scope.valid()) {
                     if (!Scope.validScopeName(scope.getScope())) {
                         log.error("scope name is not valid");
-                        throw new OAuthException(SCOPE_NAME_INVALID_ERROR, HttpResponseStatus.BAD_REQUEST);
+                        throw new OAuthException(INVALID_SCOPE_NAME_ERROR, HttpResponseStatus.BAD_REQUEST);
                     }
                     Scope foundScope = DBManagerFactory.getInstance().findScope(scope.getScope());
                     if (foundScope != null) {
                         log.error("scope already exists");
-                        throw new OAuthException(SCOPE_ALREADY_EXISTS, HttpResponseStatus.BAD_REQUEST);
+                        throw new OAuthException(SCOPE_ALREADY_EXISTS_MESSAGE, HttpResponseStatus.BAD_REQUEST);
                     } else {
                         // store in the DB, if already exists such a scope, overwrites it
                         boolean ok = DBManagerFactory.getInstance().storeScope(scope);
@@ -94,17 +98,17 @@ public class ScopeService {
                     }
                 } else {
                     log.error("scope is not valid");
-                    throw new OAuthException(MANDATORY_FIELDS_ERROR, HttpResponseStatus.BAD_REQUEST);
+                    throw new OAuthException(MANDATORY_FIELDS_FOR_SCOPE_REGISTER_ERROR, HttpResponseStatus.BAD_REQUEST);
                 }
             } catch (JsonParseException e) {
                 log.error("cannot parse scope request", e);
-                throw new OAuthException(e.getCause(), null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, INVALID_SCOPE_ERROR, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
                 log.error("cannot map scope request", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, INVALID_SCOPE_ERROR, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
                 log.error("cannot handle scope request", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, INVALID_SCOPE_ERROR, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
             throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
@@ -131,13 +135,13 @@ public class ScopeService {
             jsonString = mapper.writeValueAsString(scopes);
         } catch (JsonGenerationException e) {
             log.error("cannot load scopes", e);
-            throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+            throw new OAuthException(e, NO_SCOPES_ERROR, HttpResponseStatus.BAD_REQUEST);
         } catch (JsonMappingException e) {
             log.error("cannot load scopes", e);
-            throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+            throw new OAuthException(e, NO_SCOPES_ERROR, HttpResponseStatus.BAD_REQUEST);
         } catch (IOException e) {
             log.error("cannot load scopes", e);
-            throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+            throw new OAuthException(e, NO_SCOPES_ERROR, HttpResponseStatus.BAD_REQUEST);
         }
         return jsonString;
     }
@@ -242,7 +246,7 @@ public class ScopeService {
                     Scope foundScope = DBManagerFactory.getInstance().findScope(scopeName);
                     if (foundScope == null) {
                         log.error("scope does not exist");
-                        throw new OAuthException(SCOPE_NOT_EXIST, HttpResponseStatus.BAD_REQUEST);
+                        throw new OAuthException(SCOPE_NOT_EXISTS_MESSAGE, HttpResponseStatus.BAD_REQUEST);
                     } else {
                         setScopeEmptyValues(scope, foundScope);
                         boolean ok = DBManagerFactory.getInstance().storeScope(scope);
@@ -254,17 +258,17 @@ public class ScopeService {
                     }
                 } else {
                     log.error("scope is not valid");
-                    throw new OAuthException(MANDATORY_SCOPE_ERROR, HttpResponseStatus.BAD_REQUEST);
+                    throw new OAuthException(MANDATORY_FIELDS_FOR_SCOPE_UPDATE_ERROR, HttpResponseStatus.BAD_REQUEST);
                 }
             } catch (JsonParseException e) {
                 log.error("cannot parse scope request", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, SCOPE_UPDATED_NOK_MESSAGE, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
                 log.error("cannot map scope request", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, SCOPE_UPDATED_NOK_MESSAGE, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
                 log.error("cannot handle scope request", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, SCOPE_UPDATED_NOK_MESSAGE, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
             throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
@@ -282,7 +286,7 @@ public class ScopeService {
         Scope foundScope = DBManagerFactory.getInstance().findScope(scopeName);
         if (foundScope == null) {
             log.error("scope does not exist");
-            throw new OAuthException(SCOPE_NOT_EXIST, HttpResponseStatus.BAD_REQUEST);
+            throw new OAuthException(SCOPE_NOT_EXISTS_MESSAGE, HttpResponseStatus.BAD_REQUEST);
         } else {
             // first, check whether there is a client app registered with that scope
             if (checkForClientAppByScope(scopeName)) {
@@ -305,16 +309,16 @@ public class ScopeService {
                 return mapper.writeValueAsString(scope);
             } catch (JsonGenerationException e) {
                 log.error("cannot load scope", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, SCOPE_DOES_NOT_EXIST_ERROR, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
                 log.error("cannot load scope", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, SCOPE_DOES_NOT_EXIST_ERROR, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
                 log.error("cannot load scope", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, SCOPE_DOES_NOT_EXIST_ERROR, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
-            throw new OAuthException(SCOPE_NOT_EXIST, HttpResponseStatus.NOT_FOUND);
+            throw new OAuthException(SCOPE_NOT_EXISTS_MESSAGE, HttpResponseStatus.NOT_FOUND);
         }
     }
 
@@ -373,16 +377,16 @@ public class ScopeService {
                 jsonString = mapper.writeValueAsString(result);
             } catch (JsonGenerationException e) {
                 log.error("cannot load scopes per clientId", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
                 log.error("cannot load scopes per clientId", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
                 log.error("cannot load scopes per clientId", e);
-                throw new OAuthException(e, null, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
-            throw new OAuthException(null, HttpResponseStatus.NOT_FOUND);
+            throw new OAuthException(Response.CLIENT_APP_DOES_NOT_EXIST, HttpResponseStatus.NOT_FOUND);
         }
         return jsonString;
     }

@@ -248,17 +248,17 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
                     log.debug(json);
                     response = Response.createOkResponse(json);
                 } catch (JsonGenerationException e) {
-                    log.error("error get application info", e);
+                    log.error("error getting application info", e);
                     invokeExceptionHandler(e, req);
                 } catch (JsonMappingException e) {
-                    log.error("error get application info", e);
+                    log.error("error getting application info", e);
                     invokeExceptionHandler(e, req);
                 } catch (IOException e) {
-                    log.error("error get application info", e);
+                    log.error("error getting application info", e);
                     invokeExceptionHandler(e, req);
                 }
             } else {
-                response = Response.createResponse(HttpResponseStatus.NOT_FOUND, Response.CLIENT_APP_NOT_EXIST);
+                response = Response.createResponse(HttpResponseStatus.NOT_FOUND, Response.CLIENT_APP_DOES_NOT_EXIST);
             }
         } else {
             response = Response.createNotFoundResponse();
@@ -291,8 +291,9 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         HttpResponse response = null;
         String contentType = request.headers().get(HttpHeaders.Names.CONTENT_TYPE);
         if (contentType != null && contentType.contains(HttpHeaders.Values.APPLICATION_X_WWW_FORM_URLENCODED)) {
+            TokenRequest tokenRequest = null;
             try {
-            	TokenRequest tokenRequest = new TokenRequest(request, serverCredentials);
+            	tokenRequest = new TokenRequest(request, serverCredentials);
                 AccessToken accessToken = auth.issueAccessToken(request, tokenRequest);
                 CSRFAccessToken csrfToken = 
                 	new CSRFAccessToken(accessToken, tokenRequest.getState());
@@ -308,17 +309,19 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
                 response = Response.createOAuthExceptionResponse(ex);
                 invokeExceptionHandler(ex, request);
             } catch (JsonGenerationException e1) {
-                log.error("error handle token", e1);
+                log.error("error handling login", e1);
                 invokeExceptionHandler(e1, request);
             } catch (JsonMappingException e1) {
-                log.error("error handle token", e1);
+                log.error("error handling login", e1);
                 invokeExceptionHandler(e1, request);
             } catch (IOException e1) {
-                log.error("error handle token", e1);
+                log.error("error handling login", e1);
                 invokeExceptionHandler(e1, request);
             }
+
             if (response == null) {
-                response = Response.createBadRequestResponse(Response.CANNOT_ISSUE_TOKEN);
+                response = Response.createTokenErrorResponse(
+                        new TokenError(TokenErrorTypes.CANNOT_ISSUE_TOKEN, tokenRequest.getState()));
             }
         } else {
             response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, Response.UNSUPPORTED_MEDIA_TYPE);
@@ -330,8 +333,9 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         HttpResponse response = null;
         String contentType = request.headers().get(HttpHeaders.Names.CONTENT_TYPE);
         if (contentType != null && contentType.contains(HttpHeaders.Values.APPLICATION_X_WWW_FORM_URLENCODED)) {
+            TokenRequest tokenRequest = null;
             try {
-				TokenRequest tokenRequest = new TokenRequest(request);
+				tokenRequest = new TokenRequest(request);
                 AccessToken accessToken = auth.issueAccessToken(request, tokenRequest);
                 CSRFAccessToken csrfToken = 
                 	new CSRFAccessToken(accessToken, tokenRequest.getState());
@@ -347,22 +351,25 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
                 response = Response.createOAuthExceptionResponse(ex);
                 invokeExceptionHandler(ex, request);
             } catch (JsonGenerationException e1) {
-                log.error("error handle token", e1);
+                log.error("error handling token", e1);
                 invokeExceptionHandler(e1, request);
             } catch (JsonMappingException e1) {
-                log.error("error handle token", e1);
+                log.error("error handling token", e1);
                 invokeExceptionHandler(e1, request);
             } catch (IOException e1) {
-                log.error("error handle token", e1);
+                log.error("error handling token", e1);
                 invokeExceptionHandler(e1, request);
             }
+
             if (response == null) {
-                response = Response.createBadRequestResponse(Response.CANNOT_ISSUE_TOKEN); // TODO no STATE response
+                response = Response.createTokenErrorResponse(
+                        new TokenError(TokenErrorTypes.CANNOT_ISSUE_TOKEN, tokenRequest.getState()));
             }
         } else {
-            response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, Response.UNSUPPORTED_MEDIA_TYPE); // TODO no STATE response
+            response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, Response.UNSUPPORTED_MEDIA_TYPE);
         }
-        return response;
+
+        return response ;
     }
 
     protected void invokeRequestEventHandlers(HttpRequest request, HttpResponse response) {
@@ -434,13 +441,13 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             response = Response.createOAuthExceptionResponse(ex);
             invokeExceptionHandler(ex, req);
         } catch (JsonGenerationException e1) {
-            log.error("error handle register", e1);
+            log.error("error handling register", e1);
             invokeExceptionHandler(e1, req);
         } catch (JsonMappingException e1) {
-            log.error("error handle register", e1);
+            log.error("error handling register", e1);
             invokeExceptionHandler(e1, req);
         } catch (IOException e1) {
-            log.error("error handle register", e1);
+            log.error("error handling register", e1);
             invokeExceptionHandler(e1, req);
         }
         if (response == null) {
@@ -612,7 +619,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         } else {
             // check that clientId exists, no matter whether it is active or not
             if (!auth.isExistingClient(clientId)) {
-                response = Response.createBadRequestResponse(Response.INVALID_CLIENT_ID);
+                response = Response.createBadRequestResponse(Response.INACTIVE_CLIENT_CREDENTIALS);
             } else {
                 List<AccessToken> accessTokens = DBManagerFactory.getInstance().getAccessTokenByUserIdAndClientApp(userId, clientId);
                 Gson gson = new Gson();

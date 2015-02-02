@@ -31,7 +31,6 @@ import org.codehaus.jackson.annotate.JsonPropertyOrder;
 @JsonPropertyOrder({ "scope", "description", "cc_expires_in", "pass_expires_in", "refreshExpiresIn"})
 public class Scope {
 
-    public static final String SCOPE_FIELD = "scope";
     public static final String DESCRIPTION_FIELD = "description";
     public static final String CC_EXPIRES_IN_FIELD = "ccExpiresIn";
     public static final String PASS_EXPIRES_IN_FIELD = "passExpiresIn";

@@ -41,7 +41,6 @@ import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
 import com.mongodb.WriteResult;
 
 /**
@@ -58,7 +57,7 @@ public class MongoDBManager implements DBManager {
     protected static final String CLIENTS_COLLECTION_NAME = "clients";
     protected static final String CLIENTS_ID = "_id";
     protected static final String CLIENTS_CLIENTID = "clientId";
-    protected static final String CLIENTS_NAME = "name";
+    //protected static final String CLIENTS_NAME = "name";
 
     protected static final String AUTH_CODE_COLLECTION_NAME = "authCodes";
     protected static final String AUTH_CODE = "code";
@@ -71,7 +70,7 @@ public class MongoDBManager implements DBManager {
     protected static final String ACCESS_TOKEN_USER_ID = "userId";
 	
     protected static final String SCOPE_COLLECTION_NAME = "scopes";
-    protected static final String SCOPE_NAME = "name";
+    //protected static final String SCOPE_NAME = "name";
 
     public MongoDBManager() {
         db = MongoUtil.getDB();
@@ -269,10 +268,8 @@ public class MongoDBManager implements DBManager {
         DBCollection coll = db.getCollection(CLIENTS_COLLECTION_NAME);
         BasicDBObject query = new BasicDBObject(CLIENTS_ID, clientId);
         BSONObject result = (BSONObject) getObject(coll, query);
-        if (result != null) {
-            return (result.get("secret").equals(clientSecret) && String.valueOf(ClientCredentials.ACTIVE_STATUS).equals(result.get("status")));
-        }
-        return false;
+        return result != null &&
+                (result.get("secret").equals(clientSecret) && String.valueOf(ClientCredentials.ACTIVE_STATUS).equals(result.get("status")));
     }
 
     /*

@@ -40,32 +40,22 @@ public class OAuthException extends Exception {
         this.httpStatus = httpStatus;
     }
 
-    public OAuthException(String message, String state, HttpResponseStatus httpStatus) {
+    public OAuthException(TokenError err, HttpResponseStatus httpStatus) {
         super();
-        this.message = message;
+        this.message = err.toString();
         this.httpStatus = httpStatus;
-        appendStateToMessage(state);
     }
-    
+
+    public OAuthException(Throwable e, TokenError err, HttpResponseStatus httpStatus) {
+        super(e);
+        this.message = err.toString();
+        this.httpStatus = httpStatus;
+    }
+
     public OAuthException(Throwable e, String message, HttpResponseStatus httpStatus) {
         super(e);
         this.message = message;
         this.httpStatus = httpStatus;
-    }
-    
-    public OAuthException(Throwable e, String message, String state, HttpResponseStatus httpStatus) {
-        super(e);
-        this.message = message;
-        this.httpStatus = httpStatus;
-        appendStateToMessage(state);
-    }    
-
-    private void appendStateToMessage(String state) {
-    	if (state != null) {
-    		StringBuilder sb = new StringBuilder(message);
-    		sb.insert(sb.length()-1, ", \"state\": \""+state+"\"");
-    		message = sb.toString();
-    	}
     }
     
     @Override

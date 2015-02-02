@@ -66,12 +66,14 @@ public class RevokeTokenRequest {
 
     protected void checkMandatoryParams() throws OAuthException {
         if (accessToken == null || accessToken.isEmpty()) {
-            throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, ACCESS_TOKEN),
-                    HttpResponseStatus.BAD_REQUEST);
+            TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+            err.setMessageParams(ACCESS_TOKEN);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
         if (clientId == null || clientId.isEmpty()) {
-            throw new OAuthException(String.format(Response.MANDATORY_PARAM_MISSING, CLIENT_ID),
-                    HttpResponseStatus.BAD_REQUEST);
+            TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING);
+            err.setMessageParams(CLIENT_ID);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
     }
 }

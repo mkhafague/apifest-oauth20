@@ -104,7 +104,7 @@ public class AuthRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, appendStateToMessage(Response.RESPONSE_TYPE_NOT_SUPPORTED, state));
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.UNSUPPORTED_RESPONSE_TYPE, state).toString());
     }
 
     @Test
@@ -131,16 +131,6 @@ public class AuthRequestTest {
         }
 
         // THEN
-        assertEquals(errorMsg, appendStateToMessage(Response.INVALID_REDIRECT_URI, state));
-    }
-
-    private String appendStateToMessage(String message, String state) {
-        if (state != null) {
-            StringBuilder sb = new StringBuilder(message);
-            sb.insert(sb.length()-1, ", \"state\": \""+state+"\"");
-            return sb.toString();
-        }
-
-        return message;
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_REDIRECT_URI, state).toString());
     }
 }
