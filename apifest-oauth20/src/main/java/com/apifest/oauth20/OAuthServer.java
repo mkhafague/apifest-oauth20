@@ -68,6 +68,15 @@ public final class OAuthServer {
 
     protected static Logger log = LoggerFactory.getLogger(OAuthServer.class);
 
+    // expires_in in sec for grant type password
+    public static final int DEFAULT_PASSWORD_EXPIRES_IN = 900;
+
+    // expires_in in sec for grant type client_credentials
+    public static final int DEFAULT_CC_EXPIRES_IN = 1800;
+
+    public static final String OAUTH2_SERVER_CLIENT_NAME = "Oauth2Server";
+
+	// Context
     private static String customJar;
     private static String userAuthClass;
     private static Class<IUserAuthentication> userAuthenticationClass;
@@ -81,9 +90,11 @@ public final class OAuthServer {
     private static String redisSentinels;
     private static String redisMaster;
     private static String apifestOAuth20Nodes;
-    private static URLClassLoader jarClassLoader;
     private static String hazelcastPassword;
 
+    private static URLClassLoader jarClassLoader;
+
+    private static boolean https;
     private static SslContext sslCtx;
     private static SSLContext serverContext;
     private static SelfSignedCertificate ssc;
@@ -92,26 +103,29 @@ public final class OAuthServer {
     private static boolean productionMode;
     private static Map<String, String> serverCredentials;
 
-    // expires_in in sec for grant type password
-    public static final int DEFAULT_PASSWORD_EXPIRES_IN = 900;
-
-    // expires_in in sec for grant type client_credentials
-    public static final int DEFAULT_CC_EXPIRES_IN = 1800;
-
-    public static final String OAUTH2_SERVER_CLIENT_NAME = "Oauth2Server";
-
     private static final ReentrantLock lock = new ReentrantLock();
 
     public static void main(String[] args) throws Exception {
         if (!loadConfig()) {
             System.exit(1);
         }
+        startServer();
+    }
 
+    private static void startServer() {
+        log.info("ApiFest OAuth 2.0 Server starting ...");
+        log.info("Initializing "+getDatabase()+" database ...");
         DBManagerFactory.init();
 
 		serverCredentials = setAuthServerContext(host, portInt);
         ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
                 Executors.newCachedThreadPool());
+
+        if (https) {
+        	log.info("Setting up secured https only mode ...");
+        } else {
+        	log.info("Setting up default unsecured http mode ...");
+        }
 
         ServerBootstrap bootstrap = new ServerBootstrap(factory);
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
@@ -120,13 +134,15 @@ public final class OAuthServer {
             public ChannelPipeline getPipeline() {
                 ChannelPipeline pipeline = Channels.pipeline();
                 
-                // Add SSL handler first to encrypt and decrypt everything.
-                if (sslCtx != null)
-                	pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(sslCtx.newHandler()));
-                else {
-                	SSLEngine engine = serverContext.createSSLEngine();
-        			engine.setUseClientMode(false);
-                	pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(new SslHandler(engine)));
+                if (https) {
+                    // Add SSL handler first to encrypt and decrypt everything.
+                    if (sslCtx != null) {
+                        pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(sslCtx.newHandler()));
+                    } else {
+                        SSLEngine engine = serverContext.createSSLEngine();
+                        engine.setUseClientMode(false);
+                        pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(new SslHandler(engine)));
+                    }
                 }
                 pipeline.addLast("decoder", new HttpRequestDecoder());
                 pipeline.addLast("aggregator", new HttpChunkAggregator(4096));
@@ -155,7 +171,7 @@ public final class OAuthServer {
             if (propertiesFilePath == null) {
                 in = Thread.currentThread().getContextClassLoader().getResourceAsStream("apifest-oauth.properties");
                 if (in != null) {
-                    loadProperties(in);
+                    setupProperties(in);
                     loaded = true;
                 } else {
                     log.error("Cannot load properties file");
@@ -165,7 +181,7 @@ public final class OAuthServer {
                 File file = new File(propertiesFilePath);
                 try {
                     in = new FileInputStream(file);
-                    loadProperties(in);
+                    setupProperties(in);
                     loaded = true;
                 } catch (FileNotFoundException e) {
                     log.error("Cannot find properties file {}", propertiesFilePath);
@@ -272,7 +288,7 @@ public final class OAuthServer {
     }
 
     @SuppressWarnings("unchecked")
-    protected static void loadProperties(InputStream in) {
+    protected static void setupProperties(InputStream in) {
         Properties props = new Properties();
         try {
             props.load(in);
@@ -299,15 +315,19 @@ public final class OAuthServer {
             // dev-pass is the default password used in Hazelcast
             hazelcastPassword = props.getProperty("hazelcast.password", "dev-pass");
             
-            configureSSL((String) props.get("oauth20.keystore.path"), 
-            		(String) props.get("oauth20.keystore.password"),
-            		(String) props.get("oauth20.keystore.algorithm"));
-            
+            https = Boolean.parseBoolean((String) props.get("oauth20.https"));
+            if (https) {
+                configureSSL((String) props.get("oauth20.keystore.path"),
+                        (String) props.get("oauth20.keystore.password"),
+                        (String) props.get("oauth20.keystore.algorithm"));
+            }
+
             String mode = (String) props.get("oauth20.production.mode");
             productionMode = Boolean.parseBoolean(mode);
             String subnetsString = (String) props.get("oauth20.subnets.whitelist");
-            if (subnetsString != null)
-            	allowedIPs = SubnetRange.parse(subnetsString);
+            if (subnetsString != null) {
+                allowedIPs = SubnetRange.parse(subnetsString);
+            }
         } catch (Exception e) {            
 			log.error("Cannot load properties file", e);
         }
@@ -343,8 +363,6 @@ public final class OAuthServer {
 	            cc = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
 	                    appInfo.getRedirectUri(), appInfo.getApplicationDetails());
 	
-	            cc.setStatus(ClientCredentials.ACTIVE_STATUS);
-	            
 	        	ClientCredentials foundCc = db.findClientCredentialsByName(OAUTH2_SERVER_CLIENT_NAME);
 	        	if (foundCc == null)
 	        		db.storeClientCredentials(cc);
@@ -380,12 +398,9 @@ public final class OAuthServer {
         }
     }
 
-    protected static void configureSSL(String keystorePath, String password, String algorithm)
-    	throws IOException
-    {
+    protected static void configureSSL(String keystorePath, String password, String algorithm) throws IOException {
     	if (keystorePath != null) {
-    		try
-    		{
+    		try {
 	    		String alg = algorithm == null ? "JKS" : algorithm;
 	    		char[] pwd = password == null ? null : password.toCharArray();
 	    		final KeyStore ks = KeyStore.getInstance(alg);
@@ -396,17 +411,14 @@ public final class OAuthServer {
 	    		
 	    		serverContext = SSLContext.getInstance("TLS");
 	    		serverContext.init(kmf.getKeyManagers(), null, null);
-    		}
-    		catch (Exception e) {
+    		} catch (Exception e) {
 				throw new IOException("Unable to load certificate", e);
 			}
-    	}
-    	else {
+    	} else {
             try {
                 buildSelfSignedCertificate();
                 sslCtx = SslContext.newServerContext(ssc.certificate(), ssc.privateKey());
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
             	throw new IOException("Unable to create self signed certificate", e);
 			}
     	}
@@ -442,10 +454,6 @@ public final class OAuthServer {
     public static String getHost() {
         return host;
     }
-
-    protected static int getPortInt() {
-		return portInt;
-	}
 
     public static String getDbHost() {
         return dbHost;
