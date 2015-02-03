@@ -37,6 +37,8 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
+import com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory;
+import com.hazelcast.config.GroupConfig;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -83,24 +85,26 @@ public final class OAuthServer {
     private static String customGrantType;
     private static String customGrantTypeClass;
     private static Class<ICustomGrantTypeHandler> customGrantTypeHandler;
+    private static URLClassLoader jarClassLoader;
+
     private static String host;
     private static int portInt;
-    private static String dbHost;
-    private static String database;
+
+    private static String databaseType;
+    private static String mongoDBUri;
     private static String redisSentinels;
     private static String redisMaster;
-    private static String apifestOAuth20Nodes;
+    private static String hazelcastClusterName;
+    private static String hazelcastClusterMembers;
     private static String hazelcastPassword;
-
-    private static URLClassLoader jarClassLoader;
 
     private static boolean https;
     private static SslContext sslCtx;
     private static SSLContext serverContext;
-    private static SelfSignedCertificate ssc;
+    public static SelfSignedCertificate ssc;
 
-    private static SubnetRange allowedIPs;
     private static boolean productionMode;
+    private static SubnetRange allowedIPs;
     private static Map<String, String> serverCredentials;
 
     private static final ReentrantLock lock = new ReentrantLock();
@@ -114,7 +118,7 @@ public final class OAuthServer {
 
     private static void startServer() {
         log.info("ApiFest OAuth 2.0 Server starting ...");
-        log.info("Initializing "+getDatabase()+" database ...");
+        log.info("Initializing "+ getDatabaseType()+" database ...");
         DBManagerFactory.init();
 
 		serverCredentials = setAuthServerContext(host, portInt);
@@ -292,28 +296,30 @@ public final class OAuthServer {
         Properties props = new Properties();
         try {
             props.load(in);
+            setHostAndPort((String) props.get("oauth20.host"), (String) props.get("oauth20.port"));
+
             customJar = props.getProperty("custom.classes.jar");
             userAuthClass = props.getProperty("user.authenticate.class");
             if (userAuthClass == null) {
             	Class<?> clazz = GuestUserAuthentication.class;
             	userAuthenticationClass = (Class<IUserAuthentication>) clazz;
             }
-			
             customGrantType = props.getProperty("custom.grant_type");
             customGrantTypeClass = props.getProperty("custom.grant_type.class");
-            database = props.getProperty("oauth20.database");
+
+            databaseType = props.getProperty("oauth20.database");
             redisSentinels = props.getProperty("redis.sentinels");
             redisMaster = props.getProperty("redis.master");
-            dbHost = props.getProperty("db_uri");
-            if (dbHost == null || dbHost.length() == 0) {
-                dbHost = "localhost";
+            mongoDBUri = props.getProperty("mongodb.uri");
+            if (mongoDBUri == null || mongoDBUri.length() == 0) {
+                mongoDBUri = "localhost";
             }
 
-            setHostAndPort((String) props.get("oauth20.host"), (String) props.get("oauth20.port"));
-            apifestOAuth20Nodes = props.getProperty("apifest-oauth20.nodes");
-			
+            hazelcastClusterName = props.getProperty("hazelcast.cluster.name", HazelcastConfigFactory.HAZELCAST_GROUP_NAME);
+
             // dev-pass is the default password used in Hazelcast
-            hazelcastPassword = props.getProperty("hazelcast.password", "dev-pass");
+            hazelcastPassword = props.getProperty("hazelcast.password", GroupConfig.DEFAULT_GROUP_PASSWORD);
+            hazelcastClusterMembers = props.getProperty("hazelcast.cluster.members");
             
             https = Boolean.parseBoolean((String) props.get("oauth20.https"));
             if (https) {
@@ -455,12 +461,12 @@ public final class OAuthServer {
         return host;
     }
 
-    public static String getDbHost() {
-        return dbHost;
+    public static String getMongoDBUri() {
+        return mongoDBUri;
     }
 
-    public static String getDatabase() {
-        return database;
+    public static String getDatabaseType() {
+        return databaseType;
     }
 
     public static String getRedisSentinels() {
@@ -471,8 +477,17 @@ public final class OAuthServer {
         return redisMaster;
     }
 
-    public static String getApifestOAuth20Nodes() {
-        return apifestOAuth20Nodes;
+    public static boolean isInternalHazelcast() {
+        String name = getHazelcastClusterName();
+        return name != null && !(name.isEmpty());
+    }
+
+    public static String getHazelcastClusterName() {
+        return hazelcastClusterName;
+    }
+
+    public static String getHazelcastClusterMembers() {
+        return hazelcastClusterMembers;
     }
 
     public static Class<IUserAuthentication> getUserAuthenticationClass() {

@@ -30,10 +30,10 @@ public class DBManagerFactory {
 
     public synchronized static DBManager getInstance() {
         if (dbManager == null) {
-            if ("redis".equalsIgnoreCase(OAuthServer.getDatabase())) {
+            if ("redis".equalsIgnoreCase(OAuthServer.getDatabaseType())) {
                 dbManager = new RedisDBManager();
                 ((RedisDBManager) dbManager).setupDBManager();
-            } else if ("mongodb".equalsIgnoreCase(OAuthServer.getDatabase())) {
+            } else if ("mongodb".equalsIgnoreCase(OAuthServer.getDatabaseType())) {
                 dbManager = new MongoDBManager();
             } else {
                 dbManager = new HazelcastDBManager();

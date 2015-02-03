@@ -16,18 +16,14 @@
 
 package com.apifest.oauth20.persistence.hazelcast;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.hazelcast.client.HazelcastClient;
+import com.hazelcast.client.config.ClientConfig;
 
 import com.apifest.oauth20.AccessToken;
 import com.apifest.oauth20.AuthCode;
@@ -36,24 +32,14 @@ import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.OAuthServer;
 import com.apifest.oauth20.Scope;
 import com.hazelcast.config.Config;
-import com.hazelcast.config.ExecutorConfig;
-import com.hazelcast.config.GroupConfig;
-import com.hazelcast.config.InMemoryFormat;
-import com.hazelcast.config.InterfacesConfig;
-import com.hazelcast.config.JoinConfig;
-import com.hazelcast.config.MapConfig;
-import com.hazelcast.config.MaxSizeConfig;
-import com.hazelcast.config.MulticastConfig;
-import com.hazelcast.config.NetworkConfig;
-import com.hazelcast.config.TcpIpConfig;
-import com.hazelcast.config.MapConfig.EvictionPolicy;
-import com.hazelcast.config.MaxSizeConfig.MaxSizePolicy;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
 import com.hazelcast.query.EntryObject;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.PredicateBuilder;
+
+import static com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory.*;
 
 /**
  * This class implements a persistent storage layer using the Hazelcast Cache.
@@ -62,104 +48,35 @@ import com.hazelcast.query.PredicateBuilder;
  */
 public class HazelcastDBManager implements DBManager {
 
-    protected static Logger log = LoggerFactory.getLogger(HazelcastDBManager.class);
+    private HazelcastInstance instance;
 
-    private static final String APIFEST_SCOPE = "APIFEST_SCOPE";
-    private static final String APIFEST_CLIENT = "APIFEST_CLIENT";
-    private static final String APIFEST_AUTH_CODE = "APIFEST_AUTH_CODE";
-    private static final String APIFEST_ACCESS_TOKEN = "APIFEST_ACCESS_TOKEN";
-    private static HazelcastInstance hazelcastClient = null;
+    public HazelcastDBManager () {
+        if (OAuthServer.isInternalHazelcast()) {
+            Config config = HazelcastConfigFactory.buildConfig(OAuthServer.getHazelcastPassword());
+            instance = Hazelcast.newHazelcastInstance(config);
+            HazelcastConfigFactory.addIndexes(instance) ;
+        } else {
+            ClientConfig clientConfig = HazelcastConfigFactory.buildClientConfig(
+                    OAuthServer.getHazelcastClusterName(), OAuthServer.getHazelcastPassword());
 
-    private static final int MAX_POOL_SIZE = 64;
-
-    static {
-        // REVISIT: Hazelcast configuration
-        Config config = createConfiguration();
-        GroupConfig groupConfig = new GroupConfig("apifest-oauth20", OAuthServer.getHazelcastPassword());
-        config.setGroupConfig(groupConfig);
-        config.setMapConfigs(createMapConfigs());
-        hazelcastClient = Hazelcast.newHazelcastInstance(config);
-		hazelcastClient.getMap(APIFEST_CLIENT).addIndex("name", false);
-        hazelcastClient.getMap(APIFEST_AUTH_CODE).addIndex("codeURI", false);
-        hazelcastClient.getMap(APIFEST_ACCESS_TOKEN).addIndex("refreshTokenByClient", false);
-        hazelcastClient.getMap(APIFEST_ACCESS_TOKEN).addIndex("accessTokenByUserIdAndClient", false);
-    }
-
-    private static Map<String, MapConfig> createMapConfigs() {
-        Map<String, MapConfig> configs = new HashMap<String, MapConfig>();
-        MapConfig accTokenConfig = createMapConfig(APIFEST_ACCESS_TOKEN);
-        MapConfig scopeConfig = createMapConfig(APIFEST_SCOPE);
-        MapConfig clientConfig = createMapConfig(APIFEST_CLIENT);
-        MapConfig authCodeConfig = createMapConfig(APIFEST_AUTH_CODE);
-        configs.put(accTokenConfig.getName(), accTokenConfig);
-        configs.put(scopeConfig.getName(), scopeConfig);
-        configs.put(clientConfig.getName(), clientConfig);
-        configs.put(authCodeConfig.getName(), authCodeConfig);
-        return configs;
-    }
-
-    private static MapConfig createMapConfig(String mapName) {
-        MapConfig mapConfig = new MapConfig(mapName);
-        mapConfig.setInMemoryFormat(InMemoryFormat.OBJECT);
-        mapConfig.setBackupCount(1);
-        mapConfig.setEvictionPolicy(EvictionPolicy.NONE);
-        mapConfig.setMaxSizeConfig(new MaxSizeConfig(0, MaxSizePolicy.PER_NODE));
-        mapConfig.setEvictionPercentage(0);
-        mapConfig.setMergePolicy("com.hazelcast.map.merge.PutIfAbsentMapMergePolicy");
-        return mapConfig;
-    }
-
-    private static Config createConfiguration() {
-        Config config = new Config();
-        NetworkConfig networkCfg = createNetworkConfigs();
-        config.setNetworkConfig(networkCfg);
-
-        ExecutorConfig executorConfig = new ExecutorConfig();
-        executorConfig.setPoolSize(MAX_POOL_SIZE);
-        executorConfig.setStatisticsEnabled(false);
-        config.addExecutorConfig(executorConfig);
-
-        return config;
-    }
-
-    private static NetworkConfig createNetworkConfigs() {
-        NetworkConfig networkConfig = new NetworkConfig();
-        InterfacesConfig interfaceConfig = new InterfacesConfig();
-        // add current host
-        try {
-            interfaceConfig.addInterface(InetAddress.getByName(OAuthServer.getHost()).getHostAddress());
-        } catch (UnknownHostException e) {
-            log.error("cannot create hazelcast config", e);
+            instance = HazelcastClient.newHazelcastClient(clientConfig) ;
         }
-        interfaceConfig.setEnabled(true);
-
-        networkConfig.setInterfaces(interfaceConfig);
-        JoinConfig joinConfig = new JoinConfig();
-        TcpIpConfig tcpIps = new TcpIpConfig();
-
-        List<String> ips = createNodesList();
-        if (ips != null) {
-            tcpIps.setMembers(ips);
-            joinConfig.setTcpIpConfig(tcpIps);
-        }
-        tcpIps.setEnabled(true);
-
-        MulticastConfig multicastConfig = new MulticastConfig();
-        multicastConfig.setEnabled(false);
-        joinConfig.setMulticastConfig(multicastConfig);
-        networkConfig.setJoin(joinConfig);
-
-        return networkConfig;
     }
 
-    private static List<String> createNodesList() {
-        List<String> nodes = null;
-        String list = OAuthServer.getApifestOAuth20Nodes();
-        if (list != null && list.length() > 0) {
-            String [] n = list.split(",");
-            nodes = Arrays.asList(n);
-        }
-        return nodes;
+    private IMap<String, PersistentScope> getScopesContainer() {
+        return instance.getMap(APIFEST_SCOPE_MAP);
+    }
+
+    private IMap<String, PersistentClientCredentials> getClientCredentialsContainer() {
+        return instance.getMap(APIFEST_CLIENT_MAP);
+    }
+
+    private IMap<String, PersistentAuthCode> getAuthCodeContainer() {
+        return instance.getMap(APIFEST_AUTH_CODE_MAP);
+    }
+
+    private IMap<String, PersistentAccessToken> getAccessTokenContainer() {
+        return instance.getMap(APIFEST_ACCESS_TOKEN_MAP);
     }
 
     /*
@@ -300,22 +217,6 @@ public class HazelcastDBManager implements DBManager {
     @Override
     public Scope findScope(String scopeName) {
         return PersistenceTransformations.toScope(getScopesContainer().get(scopeName));
-    }
-
-    private IMap<String, PersistentScope> getScopesContainer() {
-        return hazelcastClient.getMap(APIFEST_SCOPE);
-    }
-
-    private IMap<String, PersistentClientCredentials> getClientCredentialsContainer() {
-        return hazelcastClient.getMap(APIFEST_CLIENT);
-    }
-
-    private IMap<String, PersistentAuthCode> getAuthCodeContainer() {
-        return hazelcastClient.getMap(APIFEST_AUTH_CODE);
-    }
-
-    private IMap<String, PersistentAccessToken> getAccessTokenContainer() {
-        return hazelcastClient.getMap(APIFEST_ACCESS_TOKEN);
     }
 
     /*
