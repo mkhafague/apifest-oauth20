@@ -37,8 +37,6 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
-import com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory;
-import com.hazelcast.config.GroupConfig;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -54,12 +52,15 @@ import org.jboss.netty.handler.ssl.util.SelfSignedCertificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.apifest.oauth20.api.GrantType;
 import com.apifest.oauth20.api.ICustomGrantTypeHandler;
 import com.apifest.oauth20.api.IUserAuthentication;
 import com.apifest.oauth20.persistence.DBManager;
+import com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory;
 import com.apifest.oauth20.security.GuestUserAuthentication;
 import com.apifest.oauth20.security.SslRequiredHandler;
 import com.apifest.oauth20.security.SubnetRange;
+import com.hazelcast.config.GroupConfig;
 
 /**
  * Class responsible for ApiFest OAuth 2.0 Server.
@@ -70,15 +71,17 @@ public final class OAuthServer {
 
     protected static Logger log = LoggerFactory.getLogger(OAuthServer.class);
 
-    // expires_in in sec for grant type password
+    // expires_in in seconds for grant type password
     public static final int DEFAULT_PASSWORD_EXPIRES_IN = 900;
 
-    // expires_in in sec for grant type client_credentials
+    // expires_in in seconds for grant type client_credentials
     public static final int DEFAULT_CC_EXPIRES_IN = 1800;
 
     public static final String OAUTH2_SERVER_CLIENT_NAME = "Oauth2Server";
 
-	// Context
+    private static final ReentrantLock lock = new ReentrantLock();
+
+    // Context
     private static String customJar;
     private static String userAuthClass;
     private static Class<IUserAuthentication> userAuthenticationClass;
@@ -100,14 +103,12 @@ public final class OAuthServer {
 
     private static boolean https;
     private static SslContext sslCtx;
-    private static SSLContext serverContext;
-    public static SelfSignedCertificate ssc;
+    private static SSLContext jdkSslContext;
+    private static SelfSignedCertificate ssc;
 
     private static boolean productionMode;
     private static SubnetRange allowedIPs;
     private static Map<String, String> serverCredentials;
-
-    private static final ReentrantLock lock = new ReentrantLock();
 
     public static void main(String[] args) throws Exception {
         if (!loadConfig()) {
@@ -143,7 +144,7 @@ public final class OAuthServer {
                     if (sslCtx != null) {
                         pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(sslCtx.newHandler()));
                     } else {
-                        SSLEngine engine = serverContext.createSSLEngine();
+                        SSLEngine engine = jdkSslContext.createSSLEngine();
                         engine.setUseClientMode(false);
                         pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(new SslHandler(engine)));
                     }
@@ -170,13 +171,11 @@ public final class OAuthServer {
     protected static boolean loadConfig() {
         String propertiesFilePath = System.getProperty("properties.file");
         InputStream in = null;
-        boolean loaded = false;
         try {
             if (propertiesFilePath == null) {
                 in = Thread.currentThread().getContextClassLoader().getResourceAsStream("apifest-oauth.properties");
                 if (in != null) {
                     setupProperties(in);
-                    loaded = true;
                 } else {
                     log.error("Cannot load properties file");
                     return false;
@@ -186,7 +185,6 @@ public final class OAuthServer {
                 try {
                     in = new FileInputStream(file);
                     setupProperties(in);
-                    loaded = true;
                 } catch (FileNotFoundException e) {
                     log.error("Cannot find properties file {}", propertiesFilePath);
                     return false;
@@ -201,43 +199,41 @@ public final class OAuthServer {
                 }
             }
         }
+        
+        loadCustomClasses();
+        return true;
+    }
+
+    protected static void loadCustomClasses() {
         if (customJar == null || customJar.isEmpty()) {
-            log.warn("Set value for user_authenticate_jar in properties file, otherwise user authentication will always pass successfully");
-        } else {
-            if (userAuthClass != null && userAuthClass.length() > 0) {
-                try {
-                    userAuthenticationClass = loadCustomUserAuthentication(userAuthClass);
-                } catch (ClassNotFoundException e) {
-                    log.error("cannot load user.authenticate.class, check property value", e);
-                }
-            }
-            if (customGrantType != null && customGrantType.length() > 0) {
-                if (customGrantTypeClass == null || customGrantTypeClass.length() == 0) {
-                    loaded = false;
-                    log.error("no custom.grant_type.class set for custom.grant_type={}", customGrantType);
-                } else {
-                    try {
-                        customGrantTypeHandler = loadCustomGrantTypeClass(customGrantTypeClass);
-                    } catch (ClassNotFoundException e) {
-                        log.error("cannot load custom.grant_type.class, check property value", e);
-                    }
-
-                }
-            }
-
+            log.warn("Set value for custom.classes.jar in properties file to load custom classes from this jar\n" +
+                        "Otherwise user authentication will always pass successfully if using default implementations");
+        }
+        if (userAuthClass != null && userAuthClass.length() > 0) {
             try {
-                LifecycleEventHandlers.loadLifecycleHandlers(getJarClassLoader(), customJar);
-            } catch (MalformedURLException e) {
-                log.warn("cannot load custom jar");
+                userAuthenticationClass = loadCustomUserAuthentication(userAuthClass);
+            } catch (ClassNotFoundException e) {
+                log.error("cannot load user.authenticate.class, check property value", e);
+            }
+        }
+        if (customGrantTypeClass != null && !customGrantTypeClass.isEmpty()) {
+            try {
+                customGrantTypeHandler = loadCustomGrantType(customGrantTypeClass);
+            } catch (ClassNotFoundException e) {
+                log.error("cannot load custom.grant_type.class, check property value", e);
             }
         }
 
-        return loaded;
+        try {
+            LifecycleEventHandlers.loadLifecycleHandlers(getJarClassLoader(), customJar);
+        } catch (MalformedURLException e) {
+            log.warn("cannot load custom jar");
+        }
     }
 
     @SuppressWarnings("unchecked")
     public static Class<IUserAuthentication> loadCustomUserAuthentication(String className) throws ClassNotFoundException {
-        Class<?> clazz = loadCustomClass(className);
+        Class<?> clazz = loadClass(className);
         if (IUserAuthentication.class.isAssignableFrom(clazz)) {
             return (Class<IUserAuthentication>) clazz;
         } else {
@@ -248,24 +244,33 @@ public final class OAuthServer {
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<ICustomGrantTypeHandler> loadCustomGrantTypeClass(String className) throws ClassNotFoundException {
-		Class<?> clazz = loadCustomClass(className);
-        if (ICustomGrantTypeHandler.class.isAssignableFrom(clazz)) {
-            return (Class<ICustomGrantTypeHandler>) clazz;
-        } else {
-            log.error("custom.grant_type.class {} does not implement ICustomGrantTypeHandler interface", clazz);
-        }
+    public static Class<ICustomGrantTypeHandler> loadCustomGrantType(String className) throws ClassNotFoundException {
+		Class<?> clazz = loadClass(className);
+		if (clazz == null) {
+			log.error("Unable to load class {} ", className);
+		} else {
+			GrantType gtAnnotation = clazz.getAnnotation(GrantType.class);
+			
+			if (gtAnnotation == null || gtAnnotation.name() == null || gtAnnotation.name().isEmpty()) {
+				log.error("Custom {} does not have the GrantType annotation declared", clazz.getCanonicalName());
+			} else if (!ICustomGrantTypeHandler.class.isAssignableFrom(clazz)) {
+				log.error("Custom {} does not implement ICustomGrantTypeHandler interface", clazz);
+			} else {
+				customGrantType = gtAnnotation.name();
+				return (Class<ICustomGrantTypeHandler>) clazz;
+	        }
+		}
 
         return null;
     }
 
-	public static Class<?> loadCustomClass(String className) throws ClassNotFoundException {
+	private static Class<?> loadClass(String className) throws ClassNotFoundException {
 		try {
 			URLClassLoader classLoader = getJarClassLoader();
 			if (classLoader != null) {
 				return classLoader.loadClass(className);
 			} else {
-				log.error("cannot load custom jar");
+                return OAuthServer.class.getClassLoader().loadClass(className);
 			}
 		} catch (MalformedURLException e) {
 			log.error("cannot load custom jar");
@@ -284,7 +289,7 @@ public final class OAuthServer {
                             OAuthServer.class.getClassLoader());
                 } else {
                     throw new MalformedURLException(
-                            "check property custom.classes.jar, jar does not exist, default authentication will be used");
+                            "check property custom.classes.jar, jar does not exist");
                 }
             }
         }
@@ -300,11 +305,9 @@ public final class OAuthServer {
 
             customJar = props.getProperty("custom.classes.jar");
             userAuthClass = props.getProperty("user.authenticate.class");
-            if (userAuthClass == null) {
-            	Class<?> clazz = GuestUserAuthentication.class;
-            	userAuthenticationClass = (Class<IUserAuthentication>) clazz;
+            if (userAuthClass == null || userAuthClass.length() == 0) {
+                userAuthClass = GuestUserAuthentication.class.getCanonicalName();
             }
-            customGrantType = props.getProperty("custom.grant_type");
             customGrantTypeClass = props.getProperty("custom.grant_type.class");
 
             databaseType = props.getProperty("oauth20.database");
@@ -352,15 +355,23 @@ public final class OAuthServer {
 	        
 	        Scope foundScope = db.findScope("admin");
 	        
-	        if (foundScope == null)
+	        if (foundScope == null) {
 	        	db.storeScope(adminScope);
+	        }
 	        
 	        // check/create oauth20 application issueClientCredentials
 	        ApplicationInfo appInfo = new ApplicationInfo();
 	        appInfo.setName(OAUTH2_SERVER_CLIENT_NAME);
 	        appInfo.setScope(adminScope.getScope());
 	        appInfo.setDescription("Oauth2 server admin");
-	        appInfo.setRedirectUri("https://"+host+":"+portInt+"/oauth20");
+
+            StringBuilder uri = new StringBuilder("http");
+            if (https) {
+                uri.append('s');
+            }
+            uri.append("://").append(host).append(':').append(portInt);
+            uri.append("/oauth20");
+            appInfo.setRedirectUri(uri.toString());
 	        appInfo.valid();
 	        
 	        ClientCredentials cc = db.findClientCredentials(appInfo.getId());
@@ -370,8 +381,9 @@ public final class OAuthServer {
 	                    appInfo.getRedirectUri(), appInfo.getApplicationDetails());
 	
 	        	ClientCredentials foundCc = db.findClientCredentialsByName(OAUTH2_SERVER_CLIENT_NAME);
-	        	if (foundCc == null)
+	        	if (foundCc == null) {
 	        		db.storeClientCredentials(cc);
+	        	}
 	        }
 	        
 	        Map<String, String> map = new HashMap<String, String>();
@@ -393,7 +405,7 @@ public final class OAuthServer {
             if (ssc == null) {
                 try {
                     String fqdn = InetAddress.getLocalHost().getCanonicalHostName();
-                    log.info("Running on host [" + fqdn + "] ...");
+                    log.info("Building self signed certificate for host [" + fqdn + "] ...");
                     ssc = new SelfSignedCertificate(fqdn);
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -415,8 +427,8 @@ public final class OAuthServer {
 	    		final KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());    		 
 	    		kmf.init(ks, pwd);
 	    		
-	    		serverContext = SSLContext.getInstance("TLS");
-	    		serverContext.init(kmf.getKeyManagers(), null, null);
+	    		jdkSslContext = SSLContext.getInstance("TLS");
+	    		jdkSslContext.init(kmf.getKeyManagers(), null, null);
     		} catch (Exception e) {
 				throw new IOException("Unable to load certificate", e);
 			}
@@ -477,7 +489,7 @@ public final class OAuthServer {
         return redisMaster;
     }
 
-    public static boolean isInternalHazelcast() {
+    public static boolean useEmbeddedHazelcast() {
         String name = getHazelcastClusterName();
         return name != null && !(name.isEmpty());
     }

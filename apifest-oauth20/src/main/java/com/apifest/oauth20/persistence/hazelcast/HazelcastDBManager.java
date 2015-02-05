@@ -16,21 +16,25 @@
 
 package com.apifest.oauth20.persistence.hazelcast;
 
+import static com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory.APIFEST_ACCESS_TOKEN_MAP;
+import static com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory.APIFEST_AUTH_CODE_MAP;
+import static com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory.APIFEST_CLIENT_MAP;
+import static com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory.APIFEST_SCOPE_MAP;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import com.hazelcast.client.HazelcastClient;
-import com.hazelcast.client.config.ClientConfig;
-
 import com.apifest.oauth20.AccessToken;
 import com.apifest.oauth20.AuthCode;
 import com.apifest.oauth20.ClientCredentials;
-import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.OAuthServer;
 import com.apifest.oauth20.Scope;
+import com.apifest.oauth20.persistence.DBManager;
+import com.hazelcast.client.HazelcastClient;
+import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
@@ -38,8 +42,6 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.query.EntryObject;
 import com.hazelcast.query.Predicate;
 import com.hazelcast.query.PredicateBuilder;
-
-import static com.apifest.oauth20.persistence.hazelcast.HazelcastConfigFactory.*;
 
 /**
  * This class implements a persistent storage layer using the Hazelcast Cache.
@@ -50,17 +52,21 @@ public class HazelcastDBManager implements DBManager {
 
     private HazelcastInstance instance;
 
-    public HazelcastDBManager () {
-        if (OAuthServer.isInternalHazelcast()) {
-            Config config = HazelcastConfigFactory.buildConfig(OAuthServer.getHazelcastPassword());
-            instance = Hazelcast.newHazelcastInstance(config);
-            HazelcastConfigFactory.addIndexes(instance) ;
-        } else {
-            ClientConfig clientConfig = HazelcastConfigFactory.buildClientConfig(
-                    OAuthServer.getHazelcastClusterName(), OAuthServer.getHazelcastPassword());
-
-            instance = HazelcastClient.newHazelcastClient(clientConfig) ;
-        }
+    public HazelcastDBManager() {
+		if (OAuthServer.useEmbeddedHazelcast()) {
+			Config config = HazelcastConfigFactory.buildConfig(
+					OAuthServer.getHazelcastClusterName(), OAuthServer.getHazelcastPassword(),
+					OAuthServer.getHost(), OAuthServer.getHazelcastClusterMembers());
+			instance = Hazelcast.newHazelcastInstance(config);
+			
+			HazelcastConfigFactory.addIndexes(instance);
+		} else {			
+			ClientConfig clientConfig = HazelcastConfigFactory.buildClientConfig(
+					OAuthServer.getHazelcastClusterName(), OAuthServer.getHazelcastPassword(),
+					OAuthServer.getHazelcastClusterMembers());
+			
+			instance = HazelcastClient.newHazelcastClient(clientConfig);
+		}
     }
 
     private IMap<String, PersistentScope> getScopesContainer() {

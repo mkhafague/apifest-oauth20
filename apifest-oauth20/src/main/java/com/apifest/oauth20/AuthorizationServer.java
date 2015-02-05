@@ -322,7 +322,7 @@ public class AuthorizationServer {
             }
         } else {
             // if no specific UserAuthentication used, always returns guest customer
-            userDetails = GuestUserAuthentication.guest;
+            userDetails = new GuestUserAuthentication().authenticate(username, password, authRequest);
         }
         return userDetails;
     }

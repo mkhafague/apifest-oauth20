@@ -7,7 +7,7 @@ public class TokenError {
     private TokenErrorTypes type;
     private String errorUri;
     private String state;
-    private String[] messageParams;
+    private Object[] messageParams;
 
     public TokenError(TokenErrorTypes type) {
         this(type, null, null);
@@ -31,7 +31,7 @@ public class TokenError {
         return errorUri;
     }
 
-    public void setMessageParams(String... messageParams) {
+    public void setMessageParams(Object... messageParams) {
         this.messageParams = messageParams;
     }
 

@@ -17,7 +17,6 @@
 package com.apifest.oauth20;
 
 import java.util.Map;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.codehaus.jackson.annotate.JsonProperty;

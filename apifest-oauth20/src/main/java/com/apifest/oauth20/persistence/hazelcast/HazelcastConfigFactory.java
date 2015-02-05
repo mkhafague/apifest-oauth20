@@ -26,7 +26,6 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.apifest.oauth20.OAuthServer;
 import com.hazelcast.client.config.ClientConfig;
 import com.hazelcast.client.config.ClientNetworkConfig;
 import com.hazelcast.config.Config;
@@ -50,26 +49,25 @@ import com.hazelcast.core.HazelcastInstance;
  */
 public class HazelcastConfigFactory {
 
-    protected static Logger log = LoggerFactory.getLogger(HazelcastConfigFactory.class);
-
+	public static final String HAZELCAST_GROUP_NAME = "apifest-oauth20";
+	
+    private static Logger log = LoggerFactory.getLogger(HazelcastConfigFactory.class);
+    private static final int MAX_POOL_SIZE = 64;
+    
     protected static final String APIFEST_SCOPE_MAP = "APIFEST_SCOPE";
     protected static final String APIFEST_CLIENT_MAP = "APIFEST_CLIENT";
     protected static final String APIFEST_AUTH_CODE_MAP = "APIFEST_AUTH_CODE";
     protected static final String APIFEST_ACCESS_TOKEN_MAP = "APIFEST_ACCESS_TOKEN";
-    
-    private static final int MAX_POOL_SIZE = 64;
-    
-    public static final String HAZELCAST_GROUP_NAME = "apifest-oauth20";
 
     private HazelcastConfigFactory() {
     }
 
     public static Config buildConfig(String groupPassword) {
-    	return buildConfig(HAZELCAST_GROUP_NAME, groupPassword);
+    	return buildConfig(HAZELCAST_GROUP_NAME, groupPassword, null, null);
     }
     
-    public static Config buildConfig(String groupName, String groupPassword) {
-    	Config config = createConfiguration();
+    public static Config buildConfig(String groupName, String groupPassword, String hostname, String clusterMembers) {    	
+    	Config config = createConfiguration(hostname, clusterMembers);
         
         GroupConfig groupConfig = new GroupConfig(groupName, groupPassword);
         config.setGroupConfig(groupConfig);
@@ -78,8 +76,8 @@ public class HazelcastConfigFactory {
         return config;
     }
     
-    public static ClientConfig buildClientConfig(String groupName, String groupPassword) {
-    	ClientConfig config = createClientConfiguration();
+    public static ClientConfig buildClientConfig(String groupName, String groupPassword, String clusterMembers) {
+    	ClientConfig config = createClientConfiguration(clusterMembers);
         
         GroupConfig groupConfig = new GroupConfig(groupName, groupPassword);
         config.setGroupConfig(groupConfig);
@@ -93,17 +91,17 @@ public class HazelcastConfigFactory {
     	instance.getMap(APIFEST_ACCESS_TOKEN_MAP).addIndex("accessTokenByUserIdAndClient", false);
     }
 
-    private static ClientConfig createClientConfiguration() {
+    private static ClientConfig createClientConfiguration(String clusterMembers) {
         ClientConfig config = new ClientConfig();
-        config.setNetworkConfig(createClientNetworkConfig());
+        config.setNetworkConfig(createClientNetworkConfig(clusterMembers));
         config.setExecutorPoolSize(MAX_POOL_SIZE);
 
         return config;
     }
     
-    private static Config createConfiguration() {
+    private static Config createConfiguration(String hostname, String clusterMembers) {
         Config config = new Config();
-        NetworkConfig networkCfg = createNetworkConfig();
+        NetworkConfig networkCfg = createNetworkConfig(hostname, clusterMembers);
         config.setNetworkConfig(networkCfg);
 
         ExecutorConfig executorConfig = new ExecutorConfig();
@@ -138,12 +136,17 @@ public class HazelcastConfigFactory {
         return mapConfig;
     }
 
-    private static NetworkConfig createNetworkConfig() {
+    private static NetworkConfig createNetworkConfig(String hostname, String clusterMembers) {
         NetworkConfig networkConfig = new NetworkConfig();
         InterfacesConfig interfaceConfig = new InterfacesConfig();
-        // add current host
+        
+        // add host
         try {
-            interfaceConfig.addInterface(InetAddress.getByName(OAuthServer.getHost()).getHostAddress());
+        	if (hostname == null) {
+        		hostname = InetAddress.getLocalHost().getCanonicalHostName();
+        	}
+
+            interfaceConfig.addInterface(InetAddress.getByName(hostname).getHostAddress());
         } catch (UnknownHostException e) {
             log.error("cannot create hazelcast config", e);
         }
@@ -152,7 +155,7 @@ public class HazelcastConfigFactory {
         networkConfig.setInterfaces(interfaceConfig);
         JoinConfig joinConfig = new JoinConfig();
 
-        List<String> members = createMembersList();
+        List<String> members = createMembersList(clusterMembers);
         if (members != null) {
         	TcpIpConfig tcpIps = new TcpIpConfig();
             tcpIps.setMembers(members);
@@ -168,20 +171,21 @@ public class HazelcastConfigFactory {
         return networkConfig;
     }
 
-    private static ClientNetworkConfig createClientNetworkConfig() {
+    private static ClientNetworkConfig createClientNetworkConfig(String clusterMembers) {
         ClientNetworkConfig networkConfig = new ClientNetworkConfig();
-        networkConfig.setAddresses(createMembersList());
+        List<String> members = createMembersList(clusterMembers);
+        if (members != null) {
+            networkConfig.setAddresses(members);
+        }
 
         return networkConfig;
     }
     
-    private static List<String> createMembersList() {
-        List<String> members = null;
-        String list = OAuthServer.getHazelcastClusterMembers();
+    private static List<String> createMembersList(String list) {
         if (list != null && list.length() > 0) {
             String [] n = list.split(",");
-            members = Arrays.asList(n);
+            return Arrays.asList(n);
         }
-        return members;
+        return null;
     }
 }
