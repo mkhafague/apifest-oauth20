@@ -21,7 +21,6 @@ import java.net.UnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.apifest.oauth20.OAuthServer;
 import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
@@ -40,13 +39,13 @@ public class MongoUtil {
 	private static String database = DEFAULT_DATABASE_NAME;
     private static Logger log = LoggerFactory.getLogger(MongoUtil.class);
 
-    public static MongoClient getMongoClient() {
+    public static MongoClient getMongoClient(String uri) {
         if (mongoClient == null) {
             try {
                 MongoClientOptions.Builder options = new MongoClientOptions.Builder()
                         .connectionsPerHost(100).connectTimeout(2000)
                         .threadsAllowedToBlockForConnectionMultiplier(1);
-                final MongoClientURI mongoClientURI  = new MongoClientURI(OAuthServer.getMongoDBUri(), options);
+                final MongoClientURI mongoClientURI  = new MongoClientURI(uri, options);
                 mongoClient = new MongoClient(mongoClientURI);
 
                 if (mongoClientURI.getDatabase() != null) {
@@ -59,8 +58,8 @@ public class MongoUtil {
         return mongoClient;
     }
 
-    public static DB getDB() {
-        return MongoUtil.getMongoClient().getDB(database);
+    public static DB getDB(String uri) {
+        return getMongoClient(uri).getDB(database);
     }
 
 }

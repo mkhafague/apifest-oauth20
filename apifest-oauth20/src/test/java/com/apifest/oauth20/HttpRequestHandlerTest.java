@@ -65,11 +65,13 @@ public class HttpRequestHandlerTest {
             String path = (new File(getClass().getClassLoader().getResource("apifest-oauth-test.properties").toURI())).toString();
             System.setProperty("properties.file", path);
         } catch (URISyntaxException uex) {
-            // do nothing
+            System.err.println(uex.getMessage());
         }
-        OAuthServer.loadConfig();
+        OAuthServerContext.OAuthServerContextBuilder builder = new OAuthServerContext.OAuthServerContextBuilder();
+        OAuthServer.loadConfig(builder);
+        OAuthServer.context = builder.build();
 
-        handler = spy(new HttpRequestHandler());
+        handler = spy(new HttpRequestHandler(OAuthServer.context.getUserAuthenticationClass(), OAuthServer.context.getCustomGrantTypeHandler()));
         handler.log = mock(Logger.class);
         channel = mock(Channel.class);
         ChannelFuture future = mock(ChannelFuture.class);

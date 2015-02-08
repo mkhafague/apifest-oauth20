@@ -40,9 +40,11 @@ public class DBManagerFactoryTest {
             String path = (new File(getClass().getClassLoader().getResource("apifest-oauth-test.properties").toURI())).toString();
             System.setProperty("properties.file", path);
         } catch (URISyntaxException uex) {
-            // do nothing
+            System.err.println(uex.getMessage());
         }
-        OAuthServer.loadConfig();
+        OAuthServerContext.OAuthServerContextBuilder builder = new OAuthServerContext.OAuthServerContextBuilder();
+        OAuthServer.loadConfig(builder);
+        OAuthServer.context = builder.build();
 
         // WHEN
         DBManager dbManager = DBManagerFactory.getInstance();

@@ -16,11 +16,7 @@
 
 package com.apifest.oauth20;
 
-import java.io.File;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-
+import com.apifest.oauth20.api.UserDetails;
 import com.apifest.oauth20.persistence.DBManager;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpStatus;
@@ -37,11 +33,21 @@ import org.slf4j.Logger;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.apifest.oauth20.api.UserDetails;
+import java.io.File;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
 
-import static org.mockito.Matchers.*;
-import static org.mockito.Mockito.*;
 import static org.mockito.BDDMockito.*;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.testng.Assert.*;
 
 /**
@@ -50,6 +56,7 @@ import static org.testng.Assert.*;
 public class AuthorizationServerTest {
 
     AuthorizationServer authServer;
+    String grantType;
 
     @BeforeMethod
     public void setup() {
@@ -58,12 +65,16 @@ public class AuthorizationServerTest {
             String path = (new File(getClass().getClassLoader().getResource("apifest-oauth-test.properties").toURI())).toString();
             System.setProperty("properties.file", path);
         } catch (URISyntaxException uex) {
-            // do nothing
+            System.err.println(uex.getMessage());
         }
-        OAuthServer.loadConfig();
+        OAuthServerContext.OAuthServerContextBuilder builder = new OAuthServerContext.OAuthServerContextBuilder();
+        OAuthServer.loadConfig(builder);
+        OAuthServerContext ctx = builder.build();
+        OAuthServer.context = ctx;
 
         AuthorizationServer.log = mock(Logger.class);
-        authServer = spy(new AuthorizationServer());
+        authServer = spy(new AuthorizationServer(ctx.getUserAuthenticationClass(),ctx.getCustomGrantTypeHandler()));
+        grantType = ctx.getCustomGrantType() == null ? "" : ctx.getCustomGrantType();
         authServer.db = mock(DBManager.class);
         authServer.scopeService = mock(ScopeService.class);
         OAuthException.log = mock(Logger.class);
@@ -1494,7 +1505,6 @@ public class AuthorizationServerTest {
         HttpRequest req = mock(HttpRequest.class);
         String clientId = "203598599234220";
         String clientSecret = "f754cb0cd78c4c36fa3c1c0325ef72bb4a011373";
-        String grantType = OAuthServer.getCustomGrantType() == null ? "" : OAuthServer.getCustomGrantType();
         String content = "grant_type=" + grantType + "&username=rossi&password=test&client_id=" +
                 clientId + "&client_secret=" + clientSecret;
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
@@ -1516,7 +1526,6 @@ public class AuthorizationServerTest {
         HttpRequest req = mock(HttpRequest.class);
         String clientId = "203598599234220";
         String clientSecret = "f754cb0cd78c4c36fa3c1c0325ef72bb4a011373";
-        String grantType = OAuthServer.getCustomGrantType() == null ? "" : OAuthServer.getCustomGrantType();
         String content = "grant_type=" + grantType + "&username=rossi&password=test&client_id=" +
                 clientId + "&client_secret=" + clientSecret;
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));
@@ -1542,7 +1551,6 @@ public class AuthorizationServerTest {
         HttpRequest req = mock(HttpRequest.class);
         String clientId = "203598599234220";
         String clientSecret = "f754cb0cd78c4c36fa3c1c0325ef72bb4a011373";
-        String grantType = OAuthServer.getCustomGrantType() == null ? "" : OAuthServer.getCustomGrantType();
         String content = "grant_type=" + grantType  + "&username=rossi&password=test&client_id=" +
                 clientId + "&client_secret=" + clientSecret;
         ChannelBuffer buf = ChannelBuffers.copiedBuffer(content.getBytes(CharsetUtil.UTF_8));

@@ -30,7 +30,6 @@ import java.util.concurrent.TimeUnit;
 import com.apifest.oauth20.AccessToken;
 import com.apifest.oauth20.AuthCode;
 import com.apifest.oauth20.ClientCredentials;
-import com.apifest.oauth20.OAuthServer;
 import com.apifest.oauth20.Scope;
 import com.apifest.oauth20.persistence.DBManager;
 import com.hazelcast.client.HazelcastClient;
@@ -52,18 +51,14 @@ public class HazelcastDBManager implements DBManager {
 
     private HazelcastInstance instance;
 
-    public HazelcastDBManager() {
-		if (OAuthServer.useEmbeddedHazelcast()) {
-			Config config = HazelcastConfigFactory.buildConfig(
-					OAuthServer.getHazelcastClusterName(), OAuthServer.getHazelcastPassword(),
-					OAuthServer.getHost(), OAuthServer.getHazelcastClusterMembers());
+    public HazelcastDBManager(String name, String pwd, String host, String members, boolean embedded) {
+		if (embedded) {
+			Config config = HazelcastConfigFactory.buildConfig(name, pwd, host, members);
 			instance = Hazelcast.newHazelcastInstance(config);
 			
 			HazelcastConfigFactory.addIndexes(instance);
 		} else {			
-			ClientConfig clientConfig = HazelcastConfigFactory.buildClientConfig(
-					OAuthServer.getHazelcastClusterName(), OAuthServer.getHazelcastPassword(),
-					OAuthServer.getHazelcastClusterMembers());
+			ClientConfig clientConfig = HazelcastConfigFactory.buildClientConfig(name, pwd, members);
 			
 			instance = HazelcastClient.newHazelcastClient(clientConfig);
 		}

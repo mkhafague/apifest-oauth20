@@ -72,8 +72,8 @@ public class MongoDBManager implements DBManager {
     protected static final String SCOPE_COLLECTION_NAME = "scopes";
     //protected static final String SCOPE_NAME = "name";
 
-    public MongoDBManager() {
-        db = MongoUtil.getDB();
+    public MongoDBManager(String uri) {
+        db = MongoUtil.getDB(uri);
     }
 
     /*

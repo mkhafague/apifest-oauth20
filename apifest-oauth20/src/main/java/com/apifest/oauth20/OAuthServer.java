@@ -37,6 +37,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
+import com.apifest.oauth20.OAuthServerContext.OAuthServerContextBuilder;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -81,52 +82,33 @@ public final class OAuthServer {
 
     private static final ReentrantLock lock = new ReentrantLock();
 
-    // Context
-    private static String customJar;
-    private static String userAuthClass;
-    private static Class<IUserAuthentication> userAuthenticationClass;
-    private static String customGrantType;
-    private static String customGrantTypeClass;
-    private static Class<ICustomGrantTypeHandler> customGrantTypeHandler;
-    private static URLClassLoader jarClassLoader;
-
-    private static String host;
-    private static int portInt;
-
-    private static String databaseType;
-    private static String mongoDBUri;
-    private static String redisSentinels;
-    private static String redisMaster;
-    private static String hazelcastClusterName;
-    private static String hazelcastClusterMembers;
-    private static String hazelcastPassword;
-
-    private static boolean https;
     private static SslContext sslCtx;
     private static SSLContext jdkSslContext;
     private static SelfSignedCertificate ssc;
 
-    private static boolean productionMode;
-    private static SubnetRange allowedIPs;
-    private static Map<String, String> serverCredentials;
+    protected static OAuthServerContext context;
 
     public static void main(String[] args) throws Exception {
-        if (!loadConfig()) {
-            System.exit(1);
-        }
         startServer();
     }
 
     private static void startServer() {
         log.info("ApiFest OAuth 2.0 Server starting ...");
-        log.info("Initializing "+ getDatabaseType()+" database ...");
+        OAuthServerContextBuilder builder = new OAuthServerContextBuilder();
+        log.info("Loading configuration ...");
+        if (!loadConfig(builder)) {
+            System.exit(1);
+        }
+        log.info("Initializing database ...");
         DBManagerFactory.init();
+        builder.setServerCredentials(setAuthServerContext(builder));
+        context = builder.build();
+        log.info("Initialized "+context.getDatabaseType()+" database ...");
 
-		serverCredentials = setAuthServerContext(host, portInt);
         ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
                 Executors.newCachedThreadPool());
 
-        if (https) {
+        if (context.isHttps()) {
         	log.info("Setting up secured https only mode ...");
         } else {
         	log.info("Setting up default unsecured http mode ...");
@@ -138,8 +120,8 @@ public final class OAuthServer {
             @Override
             public ChannelPipeline getPipeline() {
                 ChannelPipeline pipeline = Channels.pipeline();
-                
-                if (https) {
+
+                if (context.isHttps()) {
                     // Add SSL handler first to encrypt and decrypt everything.
                     if (sslCtx != null) {
                         pipeline.addLast("sslRequiredHandler", new SslRequiredHandler(sslCtx.newHandler()));
@@ -152,9 +134,9 @@ public final class OAuthServer {
                 pipeline.addLast("decoder", new HttpRequestDecoder());
                 pipeline.addLast("aggregator", new HttpChunkAggregator(4096));
                 pipeline.addLast("encoder", new HttpResponseEncoder());
-                
-                HttpRequestHandler handler = new HttpRequestHandler();
-                handler.setInitialContext(serverCredentials, allowedIPs, productionMode);
+
+                HttpRequestHandler handler = new HttpRequestHandler(context.getUserAuthenticationClass(), context.getCustomGrantTypeHandler());
+                handler.setInitialContext(context.getServerCredentials(), context.getAllowedIPs(), context.isProductionMode());
                 pipeline.addLast("handler", handler);
                 return pipeline;
             }
@@ -164,18 +146,19 @@ public final class OAuthServer {
         bootstrap.setOption("child.keepAlive", true);
         bootstrap.setOption("child.soLinger", -1);
 
-        bootstrap.bind(new InetSocketAddress(host, portInt));
-        log.info("ApiFest OAuth 2.0 Server started at " + host + ":" + portInt);
+        bootstrap.bind(new InetSocketAddress(context.getHost(), context.getPortInt()));
+        log.info("ApiFest OAuth 2.0 Server started at " + context.getHost() + ":" + context.getPortInt());
     }
 
-    protected static boolean loadConfig() {
+    protected static boolean loadConfig(OAuthServerContextBuilder builder) {
         String propertiesFilePath = System.getProperty("properties.file");
         InputStream in = null;
+        Properties props = null;
         try {
             if (propertiesFilePath == null) {
                 in = Thread.currentThread().getContextClassLoader().getResourceAsStream("apifest-oauth.properties");
                 if (in != null) {
-                    setupProperties(in);
+                    props = setupProperties(in, builder);
                 } else {
                     log.error("Cannot load properties file");
                     return false;
@@ -184,7 +167,7 @@ public final class OAuthServer {
                 File file = new File(propertiesFilePath);
                 try {
                     in = new FileInputStream(file);
-                    setupProperties(in);
+                    props = setupProperties(in, builder);
                 } catch (FileNotFoundException e) {
                     log.error("Cannot find properties file {}", propertiesFilePath);
                     return false;
@@ -199,151 +182,149 @@ public final class OAuthServer {
                 }
             }
         }
-        
-        loadCustomClasses();
+
+        loadCustomClasses(builder, props);
         return true;
     }
 
-    protected static void loadCustomClasses() {
+    protected static void loadCustomClasses(OAuthServerContextBuilder builder, Properties props) {
+        String customJar = props.getProperty("custom.classes.jar");
+        String userAuthClass = props.getProperty("user.authenticate.class");
+        if (userAuthClass == null || userAuthClass.length() == 0) {
+            userAuthClass = GuestUserAuthentication.class.getCanonicalName();
+        }
+        String customGrantTypeClass = props.getProperty("custom.grant_type.class");
+
+        URLClassLoader jarClassloader = null;
+        try {
+            jarClassloader = getJarClassLoader(customJar);
+        } catch (MalformedURLException e) {
+            log.warn("cannot load custom jar");
+        }
+
         if (customJar == null || customJar.isEmpty()) {
             log.warn("Set value for custom.classes.jar in properties file to load custom classes from this jar\n" +
-                        "Otherwise user authentication will always pass successfully if using default implementations");
+                        "Otherwise user authentication will always pass successfully if using default implementation");
         }
         if (userAuthClass != null && userAuthClass.length() > 0) {
             try {
-                userAuthenticationClass = loadCustomUserAuthentication(userAuthClass);
+                builder.setUserAuthenticationClass(loadCustomUserAuthentication(userAuthClass, jarClassloader));
             } catch (ClassNotFoundException e) {
                 log.error("cannot load user.authenticate.class, check property value", e);
             }
         }
         if (customGrantTypeClass != null && !customGrantTypeClass.isEmpty()) {
             try {
-                customGrantTypeHandler = loadCustomGrantType(customGrantTypeClass);
+                builder.setCustomGrantTypeHandler(loadCustomGrantType(customGrantTypeClass, builder, jarClassloader));
             } catch (ClassNotFoundException e) {
                 log.error("cannot load custom.grant_type.class, check property value", e);
             }
         }
 
-        try {
-            LifecycleEventHandlers.loadLifecycleHandlers(getJarClassLoader(), customJar);
-        } catch (MalformedURLException e) {
-            log.warn("cannot load custom jar");
-        }
+        LifecycleEventHandlers.loadLifecycleHandlers(jarClassloader, customJar);
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<IUserAuthentication> loadCustomUserAuthentication(String className) throws ClassNotFoundException {
-        Class<?> clazz = loadClass(className);
+    public static Class<IUserAuthentication> loadCustomUserAuthentication(String className, URLClassLoader classLoader) throws ClassNotFoundException {
+        Class<?> clazz = loadClass(className, classLoader);
         if (IUserAuthentication.class.isAssignableFrom(clazz)) {
             return (Class<IUserAuthentication>) clazz;
         } else {
-            log.error("user.authentication.class {} does not implement IUserAuthentication interface, default authentication will be used", clazz);
+            log.error("user.authentication.class {} does not implement IUserAuthentication interface, default authentication will be used", className);
         }
         
         return null;
     }
 
     @SuppressWarnings("unchecked")
-    public static Class<ICustomGrantTypeHandler> loadCustomGrantType(String className) throws ClassNotFoundException {
-		Class<?> clazz = loadClass(className);
+    public static Class<ICustomGrantTypeHandler> loadCustomGrantType(String className, OAuthServerContextBuilder builder, URLClassLoader classLoader) throws ClassNotFoundException {
+        Class<?> clazz = loadClass(className, classLoader);
 		if (clazz == null) {
 			log.error("Unable to load class {} ", className);
 		} else {
 			GrantType gtAnnotation = clazz.getAnnotation(GrantType.class);
-			
+
 			if (gtAnnotation == null || gtAnnotation.name() == null || gtAnnotation.name().isEmpty()) {
 				log.error("Custom {} does not have the GrantType annotation declared", clazz.getCanonicalName());
 			} else if (!ICustomGrantTypeHandler.class.isAssignableFrom(clazz)) {
-				log.error("Custom {} does not implement ICustomGrantTypeHandler interface", clazz);
+                log.error("Custom {} does not implement ICustomGrantTypeHandler interface", clazz.getCanonicalName());
 			} else {
-				customGrantType = gtAnnotation.name();
-				return (Class<ICustomGrantTypeHandler>) clazz;
+                builder.setCustomGrantType(gtAnnotation.name());
+                return (Class<ICustomGrantTypeHandler>) clazz;
 	        }
 		}
 
         return null;
     }
 
-	private static Class<?> loadClass(String className) throws ClassNotFoundException {
-		try {
-			URLClassLoader classLoader = getJarClassLoader();
-			if (classLoader != null) {
-				return classLoader.loadClass(className);
-			} else {
-                return OAuthServer.class.getClassLoader().loadClass(className);
-			}
-		} catch (MalformedURLException e) {
-			log.error("cannot load custom jar");
-		}		
-		
-		return null;
+	private static Class<?> loadClass(String className, URLClassLoader classLoader) throws ClassNotFoundException {
+        if (classLoader != null) {
+            return classLoader.loadClass(className);
+        } else {
+            return OAuthServer.class.getClassLoader().loadClass(className);
+        }
 	}
 	
-    private static URLClassLoader getJarClassLoader() throws MalformedURLException {
-        if (jarClassLoader == null) {
-            if (customJar != null) {
-                File file = new File(customJar);
-                if (file.exists()) {
-                    URL jarfile = file.toURI().toURL();
-                    jarClassLoader = URLClassLoader.newInstance(new URL[] { jarfile },
-                            OAuthServer.class.getClassLoader());
-                } else {
-                    throw new MalformedURLException(
-                            "check property custom.classes.jar, jar does not exist");
-                }
+    private static URLClassLoader getJarClassLoader(String customJar) throws MalformedURLException {
+        if (customJar != null) {
+            File file = new File(customJar);
+            if (file.exists()) {
+                URL jarfile = file.toURI().toURL();
+                return URLClassLoader.newInstance(new URL[] { jarfile }, OAuthServer.class.getClassLoader());
+            } else {
+                throw new MalformedURLException(
+                        "check property custom.classes.jar, jar does not exist");
             }
         }
-        return jarClassLoader;
+        return null;
     }
 
     @SuppressWarnings("unchecked")
-    protected static void setupProperties(InputStream in) {
+    protected static Properties setupProperties(InputStream in, OAuthServerContextBuilder builder) {
         Properties props = new Properties();
         try {
             props.load(in);
-            setHostAndPort((String) props.get("oauth20.host"), (String) props.get("oauth20.port"));
+            setHostAndPort(props, builder);
 
-            customJar = props.getProperty("custom.classes.jar");
-            userAuthClass = props.getProperty("user.authenticate.class");
-            if (userAuthClass == null || userAuthClass.length() == 0) {
-                userAuthClass = GuestUserAuthentication.class.getCanonicalName();
-            }
-            customGrantTypeClass = props.getProperty("custom.grant_type.class");
-
-            databaseType = props.getProperty("oauth20.database");
-            redisSentinels = props.getProperty("redis.sentinels");
-            redisMaster = props.getProperty("redis.master");
-            mongoDBUri = props.getProperty("mongodb.uri");
+            builder.setDatabaseType(props.getProperty("oauth20.database"));
+            builder.setRedisSentinels(props.getProperty("redis.sentinels"));
+            builder.setRedisMaster(props.getProperty("redis.master"));
+            String mongoDBUri = props.getProperty("mongodb.uri");
             if (mongoDBUri == null || mongoDBUri.length() == 0) {
                 mongoDBUri = "localhost";
             }
+            builder.setMongoDBUri(mongoDBUri);
 
-            hazelcastClusterName = props.getProperty("hazelcast.cluster.name", HazelcastConfigFactory.HAZELCAST_GROUP_NAME);
+            builder.setHazelcastClusterName(props.getProperty("hazelcast.cluster.name", HazelcastConfigFactory.HAZELCAST_GROUP_NAME));
 
             // dev-pass is the default password used in Hazelcast
-            hazelcastPassword = props.getProperty("hazelcast.password", GroupConfig.DEFAULT_GROUP_PASSWORD);
-            hazelcastClusterMembers = props.getProperty("hazelcast.cluster.members");
-            
-            https = Boolean.parseBoolean((String) props.get("oauth20.https"));
+            builder.setHazelcastPassword(props.getProperty("hazelcast.password", GroupConfig.DEFAULT_GROUP_PASSWORD));
+            builder.setHazelcastClusterMembers(props.getProperty("hazelcast.cluster.members"));
+
+            Boolean https = Boolean.parseBoolean((String) props.get("oauth20.https"));
+
             if (https) {
                 configureSSL((String) props.get("oauth20.keystore.path"),
                         (String) props.get("oauth20.keystore.password"),
                         (String) props.get("oauth20.keystore.algorithm"));
             }
+            builder.setHttps(https);
 
             String mode = (String) props.get("oauth20.production.mode");
-            productionMode = Boolean.parseBoolean(mode);
+            builder.setProductionMode(Boolean.parseBoolean(mode));
             String subnetsString = (String) props.get("oauth20.subnets.whitelist");
             if (subnetsString != null) {
-                allowedIPs = SubnetRange.parse(subnetsString);
+                builder.setAllowedIPs(SubnetRange.parse(subnetsString));
             }
         } catch (Exception e) {            
 			log.error("Cannot load properties file", e);
         }
+
+        return props;
     }
 
-    protected static Map<String, String> setAuthServerContext(String host, int portInt) {
-    	if (productionMode) {
+    protected static Map<String, String> setAuthServerContext(OAuthServerContextBuilder builder) {
+    	if (builder.isProductionMode()) {
 	    	DBManager db = DBManagerFactory.getInstance();
 	    	
 	    	// check/create admin scope
@@ -358,18 +339,18 @@ public final class OAuthServer {
 	        if (foundScope == null) {
 	        	db.storeScope(adminScope);
 	        }
-	        
-	        // check/create oauth20 application issueClientCredentials
+
+	        // check/create oauth20 application ClientCredentials
 	        ApplicationInfo appInfo = new ApplicationInfo();
 	        appInfo.setName(OAUTH2_SERVER_CLIENT_NAME);
 	        appInfo.setScope(adminScope.getScope());
 	        appInfo.setDescription("Oauth2 server admin");
 
             StringBuilder uri = new StringBuilder("http");
-            if (https) {
+            if (builder.isHttps()) {
                 uri.append('s');
             }
-            uri.append("://").append(host).append(':').append(portInt);
+            uri.append("://").append(builder.getHost()).append(':').append(builder.getPortInt());
             uri.append("/oauth20");
             appInfo.setRedirectUri(uri.toString());
 	        appInfo.valid();
@@ -382,10 +363,10 @@ public final class OAuthServer {
 	
 	        	ClientCredentials foundCc = db.findClientCredentialsByName(OAUTH2_SERVER_CLIENT_NAME);
 	        	if (foundCc == null) {
-	        		db.storeClientCredentials(cc);
+                    db.storeClientCredentials(cc);
 	        	}
 	        }
-	        
+
 	        Map<String, String> map = new HashMap<String, String>();
 	        map.put(TokenRequest.GRANT_TYPE, TokenRequest.PASSWORD);
 	        map.put(TokenRequest.SCOPE, cc.getScope());
@@ -395,7 +376,6 @@ public final class OAuthServer {
 	        return map;
     	}
     	
-    	// Should return some default info ?
     	return null;
     }
 
@@ -441,9 +421,9 @@ public final class OAuthServer {
 			}
     	}
     }
-    
-    protected static void setHostAndPort(String configHost, String configPort) {
-        host = configHost;
+
+    protected static void setHostAndPort(Properties props, OAuthServerContext.OAuthServerContextBuilder builder) {
+        String host = (String) props.get("oauth20.host");
         // if not set in properties file, loaded from env var
         if (host == null || host.length() == 0) {
             host = System.getProperty("oauth20.host");
@@ -452,7 +432,7 @@ public final class OAuthServer {
                 System.exit(1);
             }
         }
-        String portStr = configPort;
+        String portStr = (String) props.get("oauth20.port");
         // if not set in properties file, loaded from env var
         if (portStr == null || portStr.length() == 0) {
             portStr = System.getProperty("oauth20.port");
@@ -461,60 +441,18 @@ public final class OAuthServer {
                 System.exit(1);
             }
         }
+        int portInt = 0;
         try {
             portInt = Integer.parseInt(portStr);
         } catch (NumberFormatException e) {
             log.error("oauth20.port must be an integer");
             System.exit(1);
         }
+        builder.setHost(host);
+        builder.setPortInt(portInt);
     }
 
-    public static String getHost() {
-        return host;
-    }
-
-    public static String getMongoDBUri() {
-        return mongoDBUri;
-    }
-
-    public static String getDatabaseType() {
-        return databaseType;
-    }
-
-    public static String getRedisSentinels() {
-        return redisSentinels;
-    }
-
-    public static String getRedisMaster() {
-        return redisMaster;
-    }
-
-    public static boolean useEmbeddedHazelcast() {
-        String name = getHazelcastClusterName();
-        return name != null && !(name.isEmpty());
-    }
-
-    public static String getHazelcastClusterName() {
-        return hazelcastClusterName;
-    }
-
-    public static String getHazelcastClusterMembers() {
-        return hazelcastClusterMembers;
-    }
-
-    public static Class<IUserAuthentication> getUserAuthenticationClass() {
-        return userAuthenticationClass;
-    }
-
-    public static String getCustomGrantType() {
-        return customGrantType;
-    }
-
-    public static Class<ICustomGrantTypeHandler> getCustomGrantTypeHandler() {
-        return customGrantTypeHandler;
-    }
-
-    public static String getHazelcastPassword() {
-        return hazelcastPassword;
+    public static OAuthServerContext getContext() {
+        return context;
     }
 }

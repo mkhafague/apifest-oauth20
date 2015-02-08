@@ -105,11 +105,11 @@ public class TokenRequest {
         this.state = assignIfEmpty(this.state, params, STATE);
     }
 
-    public void validate() throws OAuthException {
+    public void validate(String customGrantType) throws OAuthException {
         checkMandatoryParams();
         if (!grantType.equals(AUTHORIZATION_CODE) && !grantType.equals(REFRESH_TOKEN)
                 && !grantType.equals(CLIENT_CREDENTIALS) && !grantType.equals(PASSWORD)
-                && !grantType.equals(OAuthServer.getCustomGrantType())) {
+                && !grantType.equals(customGrantType)) {
             TokenError err = new TokenError(TokenErrorTypes.UNSUPPORTED_GRANT_TYPE, state);
             throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }

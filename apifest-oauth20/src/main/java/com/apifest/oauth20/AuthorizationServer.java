@@ -16,10 +16,13 @@
 
 package com.apifest.oauth20;
 
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.util.Date;
-import java.util.Map;
+import com.apifest.oauth20.api.AuthenticationException;
+import com.apifest.oauth20.api.GrantType;
+import com.apifest.oauth20.api.ICustomGrantTypeHandler;
+import com.apifest.oauth20.api.IUserAuthentication;
+import com.apifest.oauth20.api.UserDetails;
+import com.apifest.oauth20.persistence.DBManager;
+import com.apifest.oauth20.security.GuestUserAuthentication;
 
 import org.apache.commons.codec.binary.Base64;
 import org.codehaus.jackson.JsonParseException;
@@ -33,12 +36,10 @@ import org.jboss.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.apifest.oauth20.api.AuthenticationException;
-import com.apifest.oauth20.api.ICustomGrantTypeHandler;
-import com.apifest.oauth20.api.IUserAuthentication;
-import com.apifest.oauth20.api.UserDetails;
-import com.apifest.oauth20.persistence.DBManager;
-import com.apifest.oauth20.security.GuestUserAuthentication;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.Date;
+import java.util.Map;
 
 /**
  * Main class for authorization.
@@ -54,6 +55,17 @@ public class AuthorizationServer {
 
     protected DBManager db = DBManagerFactory.getInstance();
     protected ScopeService scopeService = new ScopeService();
+
+    protected Class<IUserAuthentication> userAuthenticationClass;
+    protected Class<ICustomGrantTypeHandler> userCustomGrantTypeHandler;
+    private String customGrantType;
+
+    public AuthorizationServer(Class<IUserAuthentication> userAuthenticationClass,
+            Class<ICustomGrantTypeHandler> userCustomGrantTypeHandler) {
+        this.userAuthenticationClass = userAuthenticationClass;
+        this.userCustomGrantTypeHandler = userCustomGrantTypeHandler;
+        this.customGrantType = userCustomGrantTypeHandler.getAnnotation(GrantType.class).name();
+    }
 
     /**
      * Issue {@link ClientCredentials} for an app
@@ -282,9 +294,9 @@ public class AuthorizationServer {
                 throw new OAuthException(new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);
             }
             tokenRequest.setClientId(clientId);
-            tokenRequest.validate();
+            tokenRequest.validate(customGrantType);
         } else {
-            tokenRequest.validate();
+            tokenRequest.validate(customGrantType);
             // check valid client_id, client_secret and status of the client app should be active
             if (!isActiveClient(tokenRequest.getClientId(), tokenRequest.getClientSecret())) {
                 throw new OAuthException(new TokenError(TokenErrorTypes.INVALID_CLIENT_CREDENTIALS, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);
@@ -300,7 +312,7 @@ public class AuthorizationServer {
         	accessToken = handleClientCredentialsGrantType(tokenRequest);
         } else if (TokenRequest.PASSWORD.equals(tokenRequest.getGrantType())) {
         	accessToken = handlePasswordGrantType(tokenRequest, req);
-        } else if (tokenRequest.getGrantType().equals(OAuthServer.getCustomGrantType())) {
+        } else if (tokenRequest.getGrantType().equals(customGrantType)) {
             accessToken = handleCustomGrantType(tokenRequest, req);
         }
         
@@ -309,9 +321,9 @@ public class AuthorizationServer {
 	
     protected UserDetails authenticateUser(String username, String password, HttpRequest authRequest) throws AuthenticationException {
         UserDetails userDetails;
-        if (OAuthServer.getUserAuthenticationClass() != null) {
+        if (userAuthenticationClass != null) {
             try {
-                IUserAuthentication ua = OAuthServer.getUserAuthenticationClass().newInstance();
+                IUserAuthentication ua = userAuthenticationClass.newInstance();
                 userDetails = ua.authenticate(username, password, authRequest);
             } catch (InstantiationException e) {
                 log.error("cannot instantiate user authentication class", e);
@@ -330,9 +342,9 @@ public class AuthorizationServer {
     protected UserDetails callCustomGrantTypeHandler(HttpRequest authRequest) throws AuthenticationException {
         UserDetails userDetails = null;
         ICustomGrantTypeHandler customHandler;
-        if (OAuthServer.getCustomGrantTypeHandler() != null) {
+        if (userCustomGrantTypeHandler != null) {
             try {
-                customHandler = OAuthServer.getCustomGrantTypeHandler().newInstance();
+                customHandler = userCustomGrantTypeHandler.newInstance();
                 userDetails = customHandler.execute(authRequest);
             } catch (InstantiationException e) {
                 log.error("cannot instantiate custom grant_type class", e);

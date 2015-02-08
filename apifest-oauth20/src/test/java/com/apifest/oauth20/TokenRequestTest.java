@@ -53,7 +53,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -77,7 +77,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -99,7 +99,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -124,7 +124,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -147,7 +147,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -169,7 +169,7 @@ public class TokenRequestTest {
         tokenReq.setClientId("203598599234220");
 
         // WHEN
-        tokenReq.validate();
+        tokenReq.validate("foo");
     }
 
     @Test
@@ -184,7 +184,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -207,7 +207,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }
@@ -230,7 +230,7 @@ public class TokenRequestTest {
         // WHEN
         String errorMsg = null;
         try {
-            tokenReq.validate();
+            tokenReq.validate("foo");
         } catch (OAuthException e) {
             errorMsg = e.getMessage();
         }

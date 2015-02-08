@@ -29,7 +29,6 @@ import redis.clients.jedis.ScanResult;
 import com.apifest.oauth20.AccessToken;
 import com.apifest.oauth20.AuthCode;
 import com.apifest.oauth20.ClientCredentials;
-import com.apifest.oauth20.OAuthServer;
 import com.apifest.oauth20.Scope;
 import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.utils.JSONUtils;
@@ -48,17 +47,15 @@ public class RedisDBManager implements DBManager {
     
     private static final String SCOPE_PREFIX_NAME = "sc:";
 
-    private static JedisSentinelPool pool;
+    private JedisSentinelPool pool;
     //private static String storeAuthCodeScript = "";
     //private static String storeAuthCodeSHA;
 
-    static {
-        String[] sentinelsList = OAuthServer.getRedisSentinels().split(",");
+    public RedisDBManager(String master, String sentinelsAsString) {
+        String[] sentinelsList = sentinelsAsString.split(",");
         Set<String> sentinels = new HashSet<String>(Arrays.asList(sentinelsList));
-        pool = new JedisSentinelPool(OAuthServer.getRedisMaster(), sentinels);
-    }
+        pool = new JedisSentinelPool(master, sentinels);
 
-    public void setupDBManager() {
         //Jedis jedis = pool.getResource();
         //storeAuthCodeSHA = jedis.scriptLoad(storeAuthCodeScript);
         //pool.returnResource(jedis);

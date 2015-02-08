@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.apifest.oauth20.api.ICustomGrantTypeHandler;
+import com.apifest.oauth20.api.IUserAuthentication;
 import org.codehaus.jackson.JsonGenerationException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -76,31 +78,28 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
     protected static Logger accessTokensLog = LoggerFactory.getLogger("accessTokens");
 
-    protected AuthorizationServer auth = new AuthorizationServer();
+    protected AuthorizationServer auth;
 
     protected SubnetRange allowedIPs;
     private boolean productionMode = false;
-	private static Map<String, String> serverCredentials;
+	private Map<String, String> serverCredentials;
 
-	public HttpRequestHandler()
-	{
-	}
+	public HttpRequestHandler(Class<IUserAuthentication> userAuthenticationClass,
+                              Class<ICustomGrantTypeHandler> userCustomGrantTypeHandler) {
+        auth = new AuthorizationServer(userAuthenticationClass, userCustomGrantTypeHandler);
+    }
 	
-	protected void setInitialContext(Map<String, String> serverCredentials, SubnetRange allowedIPs, boolean productionMode)
-	{
-		HttpRequestHandler.serverCredentials = serverCredentials;
+	protected void setInitialContext(Map<String, String> serverCredentials, SubnetRange allowedIPs, boolean productionMode) {
+		this.serverCredentials = serverCredentials;
 		this.allowedIPs = allowedIPs;
 		this.productionMode = productionMode;
 	}
 
-	private void checkSecurityRestrictions(ChannelHandlerContext ctx, String rawUri, HttpRequest req)
-		throws RestrictedAccessException {
+	private void checkSecurityRestrictions(ChannelHandlerContext ctx, String rawUri, HttpRequest req) throws RestrictedAccessException {
 		checkSecurityRestrictions(true, ctx, rawUri, req);
 	}
 	
-	private void checkSecurityRestrictions(boolean checkAuth, ChannelHandlerContext ctx, String rawUri, HttpRequest req) 
-		throws RestrictedAccessException
-	{
+	private void checkSecurityRestrictions(boolean checkAuth, ChannelHandlerContext ctx, String rawUri, HttpRequest req) throws RestrictedAccessException {
 		if (productionMode) {
 			String addr = ((InetSocketAddress) ctx.getChannel().getRemoteAddress()).getAddress().getHostAddress();
 			
@@ -380,26 +379,11 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         invokeHandlers(request, response, LifecycleEventHandlers.getResponseEventHandlers());
     }
 
-    protected void invokeExceptionHandler(Exception ex, HttpRequest request) {
-        List<Class<ExceptionEventHandler>> handlers = LifecycleEventHandlers.getExceptionHandlers();
-        for (int i = 0; i < handlers.size(); i++) {
+    private void invokeHandlers(HttpRequest request, HttpResponse response, List<Class<LifecycleHandler>> handlers) {
+        List<Class<LifecycleHandler>> list = new ArrayList<Class<LifecycleHandler>>(handlers);
+        for (Class<LifecycleHandler> clazz : list) {
             try {
-                ExceptionEventHandler handler = handlers.get(i).newInstance();
-                handler.handleException(ex, request);
-            } catch (InstantiationException e) {
-                log.error("cannot instantiate exception handler", e);
-                invokeExceptionHandler(e, request);
-            } catch (IllegalAccessException e) {
-                log.error("cannot invoke exception handler", e);
-                invokeExceptionHandler(ex, request);
-            }
-        }
-    }
-
-    protected void invokeHandlers(HttpRequest request, HttpResponse response, List<Class<LifecycleHandler>> handlers) {
-        for (int i = 0; i < handlers.size(); i++) {
-            try {
-                LifecycleHandler handler = handlers.get(i).newInstance();
+                LifecycleHandler handler = clazz.newInstance();
                 handler.handle(request, response);
             } catch (InstantiationException e) {
                 log.error("cannot instantiate handler", e);
@@ -407,6 +391,22 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             } catch (IllegalAccessException e) {
                 log.error("cannot invoke handler", e);
                 invokeExceptionHandler(e, request);
+            }
+        }
+    }
+
+    protected void invokeExceptionHandler(Exception ex, HttpRequest request) {
+        List<Class<ExceptionEventHandler>> handlers = new ArrayList<Class<ExceptionEventHandler>>(LifecycleEventHandlers.getExceptionHandlers());
+        for (Class<ExceptionEventHandler> clazz : handlers) {
+            try {
+                ExceptionEventHandler handler = clazz.newInstance();
+                handler.handleException(ex, request);
+            } catch (InstantiationException e) {
+                log.error("cannot instantiate exception handler", e);
+                invokeExceptionHandler(e, request);
+            } catch (IllegalAccessException e) {
+                log.error("cannot invoke exception handler", e);
+                invokeExceptionHandler(ex, request);
             }
         }
     }
@@ -631,9 +631,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     @Override
-	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
-		throws Exception
-	{
+	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
 		log.error("Error report", e.getCause());
 		e.getChannel().close();
 	}    

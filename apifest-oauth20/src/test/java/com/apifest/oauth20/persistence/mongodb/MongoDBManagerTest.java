@@ -48,7 +48,7 @@ public class MongoDBManagerTest {
 
     @BeforeMethod
     public void setup() {
-        dbManager = spy(new MongoDBManager());
+        dbManager = spy(new MongoDBManager("mongodb://"));
         MongoDBManager.log = mock(Logger.class);
         db = mock(DB.class);
         coll = mock(DBCollection.class);

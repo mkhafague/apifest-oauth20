@@ -24,22 +24,31 @@ import com.apifest.oauth20.persistence.hazelcast.HazelcastDBManager;
 import com.apifest.oauth20.persistence.mongodb.MongoDBManager;
 import com.apifest.oauth20.persistence.redis.RedisDBManager;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 public class DBManagerFactory {
 
+    private static final ReentrantLock lock = new ReentrantLock();
     protected static volatile DBManager dbManager;
 
-    public synchronized static DBManager getInstance() {
-        if (dbManager == null) {
-            if ("redis".equalsIgnoreCase(OAuthServer.getDatabaseType())) {
-                dbManager = new RedisDBManager();
-                ((RedisDBManager) dbManager).setupDBManager();
-            } else if ("mongodb".equalsIgnoreCase(OAuthServer.getDatabaseType())) {
-                dbManager = new MongoDBManager();
-            } else {
-                dbManager = new HazelcastDBManager();
+    public static DBManager getInstance() {
+        lock.lock();
+        try {
+            if (dbManager == null) {
+                OAuthServerContext ctx = OAuthServer.getContext();
+                if ("redis".equalsIgnoreCase(ctx.getDatabaseType())) {
+                    dbManager = new RedisDBManager(ctx.getRedisMaster(), ctx.getRedisSentinels());
+                } else if ("mongodb".equalsIgnoreCase(ctx.getDatabaseType())) {
+                    dbManager = new MongoDBManager(ctx.getMongoDBUri());
+                } else {
+                    dbManager = new HazelcastDBManager(ctx.getHazelcastClusterName(), ctx.getHazelcastPassword(),
+                            ctx.getHost(), ctx.getHazelcastClusterMembers(), ctx.useEmbeddedHazelcast());
+                }
             }
+            return dbManager;
+        } finally {
+            lock.unlock();
         }
-        return dbManager;
     }
 
     public static void init() {
