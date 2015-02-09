@@ -89,7 +89,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         auth = new AuthorizationServer(userAuthenticationClass, userCustomGrantTypeHandler);
     }
 	
-	protected void setInitialContext(Map<String, String> serverCredentials, SubnetRange allowedIPs, boolean productionMode) {
+	protected void setContext(Map<String, String> serverCredentials, SubnetRange allowedIPs, boolean productionMode) {
 		this.serverCredentials = serverCredentials;
 		this.allowedIPs = allowedIPs;
 		this.productionMode = productionMode;
@@ -432,7 +432,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     protected HttpResponse handleRegister(HttpRequest req) {
         HttpResponse response = null;
         try {
-            ClientCredentials creds = auth.issueClientCredentials(req);
+            ClientCredentials creds = getClientCredentialsService().issueClientCredentials(req);
             ObjectMapper mapper = new ObjectMapper();
             String jsonString = mapper.writeValueAsString(creds);
             log.debug("credentials:" + jsonString);
@@ -555,13 +555,17 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         return new ScopeService();
     }
 
+    protected ClientCredentialsService getClientCredentialsService() {
+        return new ClientCredentialsService();
+    }
+
     protected HttpResponse handleUpdateClientApplication(HttpRequest req) {
         HttpResponse response = null;
         Matcher m = APPLICATION_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String clientId = m.group(1);
             try {
-                if (auth.updateClientCredentials(req, clientId)) {
+                if (getClientCredentialsService().updateClientCredentials(req, clientId)) {
                     response = Response.createOkResponse(Response.CLIENT_APP_UPDATED);
                 }
             } catch (OAuthException ex) {
@@ -618,7 +622,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             response = Response.createBadRequestResponse(String.format(Response.MANDATORY_PARAM_MISSING, QueryParameter.USER_ID));
         } else {
             // check that clientId exists, no matter whether it is active or not
-            if (!auth.isExistingClient(clientId)) {
+            if (!getClientCredentialsService().isExistingClient(clientId)) {
                 response = Response.createBadRequestResponse(Response.INACTIVE_CLIENT_CREDENTIALS);
             } else {
                 List<AccessToken> accessTokens = DBManagerFactory.getInstance().getAccessTokenByUserIdAndClientApp(userId, clientId);

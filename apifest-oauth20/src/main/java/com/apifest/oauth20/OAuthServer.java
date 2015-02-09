@@ -136,7 +136,7 @@ public final class OAuthServer {
                 pipeline.addLast("encoder", new HttpResponseEncoder());
 
                 HttpRequestHandler handler = new HttpRequestHandler(context.getUserAuthenticationClass(), context.getCustomGrantTypeHandler());
-                handler.setInitialContext(context.getServerCredentials(), context.getAllowedIPs(), context.isProductionMode());
+                handler.setContext(context.getServerCredentials(), context.getAllowedIPs(), context.isProductionMode());
                 pipeline.addLast("handler", handler);
                 return pipeline;
             }

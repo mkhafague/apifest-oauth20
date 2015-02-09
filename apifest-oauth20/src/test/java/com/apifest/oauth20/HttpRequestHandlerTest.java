@@ -84,16 +84,16 @@ public class HttpRequestHandlerTest {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
         given(req.getUri()).willReturn("http://example.com/oauth20/register?app_name=TestDemoApp");
-        AuthorizationServer auth = mock(AuthorizationServer.class);
         ClientCredentials creds = new ClientCredentials("TestDemoApp", "basic", "descr", "http://example.com", null);
-        given(auth.issueClientCredentials(req)).willReturn(creds);
-        handler.auth = auth;
+        ClientCredentialsService service = mock(ClientCredentialsService.class);
+        willReturn(service).given(handler).getClientCredentialsService();
+        willReturn(creds).given(service).issueClientCredentials(req);
 
         // WHEN
         HttpResponse response = handler.handleRegister(req);
 
         // THEN
-        verify(handler.auth).issueClientCredentials(req);
+        verify(service).issueClientCredentials(req);
         String res = response.getContent().toString(CharsetUtil.UTF_8);
         assertTrue(res.contains("client_id"));
     }
@@ -104,11 +104,11 @@ public class HttpRequestHandlerTest {
         HttpRequest req = mock(HttpRequest.class);
         given(req.getUri()).willReturn(
                 "http://example.com/oauth20/register?app_name=TestDemoApp&scope=basic");
-        AuthorizationServer auth = mock(AuthorizationServer.class);
+        ClientCredentialsService service = mock(ClientCredentialsService.class);
+        willReturn(service).given(handler).getClientCredentialsService();
         willThrow(
                 new OAuthException(Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL,
-                        HttpResponseStatus.BAD_REQUEST)).given(auth).issueClientCredentials(req);
-        handler.auth = auth;
+                        HttpResponseStatus.BAD_REQUEST)).given(service).issueClientCredentials(req);
 
         // WHEN
         HttpResponse response = handler.handleRegister(req);
@@ -122,10 +122,10 @@ public class HttpRequestHandlerTest {
     public void when_register_and_JSON_exception_occurs_return_error() throws Exception {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
-        AuthorizationServer auth = mock(AuthorizationServer.class);
         ClientCredentials creds = mock(ClientCredentials.class);
-        willReturn(creds).given(auth).issueClientCredentials(req);
-        handler.auth = auth;
+        ClientCredentialsService service = mock(ClientCredentialsService.class);
+        willReturn(service).given(handler).getClientCredentialsService();
+        willReturn(creds).given(service).issueClientCredentials(req);
 
         // WHEN
         HttpResponse response = handler.handleRegister(req);
@@ -139,11 +139,11 @@ public class HttpRequestHandlerTest {
     public void when_OAuthException_return_response_with_exception_status() throws Exception {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
-        AuthorizationServer auth = mock(AuthorizationServer.class);
         OAuthException ex = new OAuthException(Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL,
                 HttpResponseStatus.BAD_REQUEST);
-        willThrow(ex).given(auth).issueClientCredentials(req);
-        handler.auth = auth;
+        ClientCredentialsService service = mock(ClientCredentialsService.class);
+        willReturn(service).given(handler).getClientCredentialsService();
+        willThrow(ex).given(service).issueClientCredentials(req);
 
         // WHEN
         HttpResponse response = handler.handleRegister(req);
@@ -743,9 +743,9 @@ public class HttpRequestHandlerTest {
         String userId = "214331231";
         String clientId = "218900b6c8d973881cf4185ecf";
         willReturn(HttpRequestHandler.ACCESS_TOKEN_URI + "?client_id=" + clientId + "&user_id=" + userId).given(req).getUri();
-        handler.auth = mock(AuthorizationServer.class);
-        willReturn(false).given(handler.auth).isActiveClientId(clientId);
-
+        ClientCredentialsService service = mock(ClientCredentialsService.class);
+        willReturn(service).given(handler).getClientCredentialsService();
+        willReturn(false).given(service).isActiveClientId(clientId);
 
         // WHEN
         HttpResponse response = handler.handleGetAccessTokens(req);
@@ -834,12 +834,12 @@ public class HttpRequestHandlerTest {
         String userId = "214331231";
         String clientId = "218900b6c8d973881cf4185ecf";
         willReturn(HttpRequestHandler.ACCESS_TOKEN_URI + "?client_id=" + clientId + "&user_id=" + userId).given(req).getUri();
-        handler.auth = mock(AuthorizationServer.class);
-        willReturn(true).given(handler.auth).isExistingClient(clientId);
+        ClientCredentialsService service = mock(ClientCredentialsService.class);
+        willReturn(service).given(handler).getClientCredentialsService();
+        willReturn(true).given(service).isExistingClient(clientId);
         MockDBManagerFactory.install();
         List<AccessToken> tokens = new ArrayList<AccessToken>();
         willReturn(tokens).given(DBManagerFactory.getInstance()).getAccessTokenByUserIdAndClientApp(userId, clientId);
-
 
         // WHEN
         HttpResponse response = handler.handleGetAccessTokens(req);

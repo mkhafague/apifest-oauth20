@@ -25,9 +25,6 @@ import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.security.GuestUserAuthentication;
 
 import org.apache.commons.codec.binary.Base64;
-import org.codehaus.jackson.JsonParseException;
-import org.codehaus.jackson.map.JsonMappingException;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.handler.codec.http.HttpHeaders;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponseStatus;
@@ -36,7 +33,6 @@ import org.jboss.netty.util.CharsetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Date;
 import java.util.Map;
@@ -55,6 +51,7 @@ public class AuthorizationServer {
 
     protected DBManager db = DBManagerFactory.getInstance();
     protected ScopeService scopeService = new ScopeService();
+    protected ClientCredentialsService clientCredentialsService = new ClientCredentialsService();
 
     protected Class<IUserAuthentication> userAuthenticationClass;
     protected Class<ICustomGrantTypeHandler> userCustomGrantTypeHandler;
@@ -67,61 +64,11 @@ public class AuthorizationServer {
         this.customGrantType = userCustomGrantTypeHandler.getAnnotation(GrantType.class).name();
     }
 
-    /**
-     * Issue {@link ClientCredentials} for an app
-     *
-     * @param req the request
-     * @return created credentials
-     * @throws OAuthException
-     */
-    public ClientCredentials issueClientCredentials(HttpRequest req) throws OAuthException {
-        ClientCredentials creds;
-        String content = req.getContent().toString(CharsetUtil.UTF_8);
-        String contentType = req.headers().get(HttpHeaders.Names.CONTENT_TYPE);
-
-        if (contentType != null && contentType.contains(Response.APPLICATION_JSON)) {
-            ObjectMapper mapper = new ObjectMapper();
-            ApplicationInfo appInfo;
-            try {
-                appInfo = mapper.readValue(content, ApplicationInfo.class);
-                if (appInfo.valid()) {
-                    checkScopeList(appInfo);
-                    // check client_id, client_secret passed
-                    if ((appInfo.getId() != null && appInfo.getId().length() > 0) &&
-                            (appInfo.getSecret() != null && appInfo.getSecret().length() > 0)) {
-                        // if a client app with this client_id already registered
-                        if (db.findClientCredentials(appInfo.getId()) == null) {
-                            creds = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
-                                appInfo.getRedirectUri(), appInfo.getId(), appInfo.getSecret(), appInfo.getApplicationDetails());
-                        } else {
-                            throw new OAuthException(Response.ALREADY_REGISTERED_APP, HttpResponseStatus.BAD_REQUEST);
-                        }
-                    } else {
-                        creds = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
-                                appInfo.getRedirectUri(), appInfo.getApplicationDetails());
-                    }
-                    db.storeClientCredentials(creds);
-                } else {
-                    throw new OAuthException(Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL, HttpResponseStatus.BAD_REQUEST);
-                }
-            } catch (JsonParseException e) {
-                throw new OAuthException(e, Response.CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
-            } catch (JsonMappingException e) {
-                throw new OAuthException(e, Response.CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
-            } catch (IOException e) {
-                throw new OAuthException(e, Response.CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
-            }
-        } else {
-            throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
-        }
-        return creds;
-    }
-
     // /authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz&redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
     public String issueAuthorizationCode(HttpRequest req) throws OAuthException {
         AuthRequest authRequest = new AuthRequest(req);
         log.debug("received client_id:" + authRequest.getClientId());
-        if (!isActiveClientId(authRequest.getClientId())) {
+        if (!clientCredentialsService.isActiveClientId(authRequest.getClientId())) {
             throw new OAuthException(new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS, authRequest.getState())
                     , HttpResponseStatus.BAD_REQUEST);
         }
@@ -290,7 +237,7 @@ public class AuthorizationServer {
         if (tokenRequest.getClientId() == null) {
             String clientId = getBasicAuthorizationClientId(req);
             // TODO: check Basic Auth is OK
-            if (clientId == null || !isActiveClientId(clientId)) {
+            if (clientId == null || !clientCredentialsService.isActiveClientId(clientId)) {
                 throw new OAuthException(new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);
             }
             tokenRequest.setClientId(clientId);
@@ -298,7 +245,7 @@ public class AuthorizationServer {
         } else {
             tokenRequest.validate(customGrantType);
             // check valid client_id, client_secret and status of the client app should be active
-            if (!isActiveClient(tokenRequest.getClientId(), tokenRequest.getClientSecret())) {
+            if (!clientCredentialsService.isActiveClient(tokenRequest.getClientId(), tokenRequest.getClientSecret())) {
                 throw new OAuthException(new TokenError(TokenErrorTypes.INVALID_CLIENT_CREDENTIALS, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);
             }
         }
@@ -416,27 +363,6 @@ public class AuthorizationServer {
         return AuthCode.generate();
     }
 
-    protected boolean isActiveClientId(String clientId) {
-        ClientCredentials creds = db.findClientCredentials(clientId);
-        return (creds != null && creds.getStatus() == ClientCredentials.ACTIVE_STATUS);
-    }
-
-    // check only that clientId and clientSecret are valid, NOT that the status is active
-    protected boolean isValidClientCredentials(String clientId, String clientSecret) {
-        ClientCredentials creds = db.findClientCredentials(clientId);
-        return (creds != null && creds.getSecret().equals(clientSecret));
-    }
-
-    protected boolean isActiveClient(String clientId, String clientSecret) {
-        ClientCredentials creds = db.findClientCredentials(clientId);
-        return (creds != null && creds.getSecret().equals(clientSecret) && creds.getStatus() == ClientCredentials.ACTIVE_STATUS);
-    }
-
-    protected boolean isExistingClient(String clientId) {
-        ClientCredentials creds = db.findClientCredentials(clientId);
-        return (creds != null);
-    }
-
     protected String getExpiresIn(String tokenGrantType, String scope) {
         return String.valueOf(scopeService.getExpiresIn(tokenGrantType, scope));
     }
@@ -446,7 +372,7 @@ public class AuthorizationServer {
         revokeRequest.checkMandatoryParams();
         String clientId = revokeRequest.getClientId();
         // check valid client_id, status does not matter as token of inactive client app could be revoked too
-        if (!isExistingClient(clientId)) {
+        if (!clientCredentialsService.isExistingClient(clientId)) {
             throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
         }
         String token = revokeRequest.getAccessToken();
@@ -468,52 +394,4 @@ public class AuthorizationServer {
         log.debug("access token {} not found", token);
         return false;
     }
-
-    private void checkScopeList(ApplicationInfo appInfo) throws OAuthException {
-        if (appInfo.getScope() != null) {
-            String[] scopeList = appInfo.getScope().split(" ");
-            for (String s : scopeList) {
-                // TODO: add cache for scope
-                if (db.findScope(s) == null) {
-                    throw new OAuthException(ScopeService.SCOPE_DOES_NOT_EXIST_ERROR, HttpResponseStatus.BAD_REQUEST);
-                }
-            }
-        }
-    }
-
-    public boolean updateClientCredentials(HttpRequest req, String clientId) throws OAuthException {
-        String content = req.getContent().toString(CharsetUtil.UTF_8);
-        String contentType = req.headers().get(HttpHeaders.Names.CONTENT_TYPE);
-        if (contentType != null && contentType.contains(Response.APPLICATION_JSON)) {
-//            String clientId = getBasicAuthorizationClientId(req);
-//            if (clientId == null) {
-//                throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
-//            }
-            if (!isExistingClient(clientId)) {
-                throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
-            }
-            ObjectMapper mapper = new ObjectMapper();
-            ApplicationInfo appInfo;
-            try {
-                appInfo = mapper.readValue(content, ApplicationInfo.class);
-                if (appInfo.validForUpdate()) {
-                    checkScopeList(appInfo);
-                    db.updateClientApp(clientId, appInfo.getScope(), appInfo.getDescription(), appInfo.getStatus(),
-                                       appInfo.getApplicationDetails());
-                } else {
-                    throw new OAuthException(Response.UPDATE_APP_MANDATORY_PARAM_MISSING, HttpResponseStatus.BAD_REQUEST);
-                }
-            } catch (JsonParseException e) {
-                throw new OAuthException(e, Response.CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
-            } catch (JsonMappingException e) {
-                throw new OAuthException(e, Response.CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
-            } catch (IOException e) {
-                throw new OAuthException(e, Response.CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
-            }
-        } else {
-            throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
-        }
-        return true;
-    }
-
 }
