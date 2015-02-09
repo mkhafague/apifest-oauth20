@@ -51,9 +51,8 @@ hazelcast.cluster.name=
 hazelcast.password=  
 hazelcast.cluster.members=  
 custom.classes.jar=  
-user.authenticate.class=  
-custom.grant_type=  
-custom.grant_type.class=  
+custom.authenticate.class=
+custom.grant_type.class=
 ```
 
 The path to the apifest.properties file should be set using a system variable ***-Dproperties.file***  
@@ -135,7 +134,7 @@ You can add your classes to the classpath or provide a jar that contains the imp
 
 The custom user authentication class will be loaded when it's name is provided by the following property:
 
-***user.authenticate.class***
+***custom.authenticate.class***
 
 * **Setup custom grant_type**
 

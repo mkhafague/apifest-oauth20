@@ -189,7 +189,7 @@ public final class OAuthServer {
 
     protected static void loadCustomClasses(OAuthServerContextBuilder builder, Properties props) {
         String customJar = props.getProperty("custom.classes.jar");
-        String userAuthClass = props.getProperty("user.authenticate.class");
+        String userAuthClass = props.getProperty("custom.authenticate.class");
         if (userAuthClass == null || userAuthClass.length() == 0) {
             userAuthClass = GuestUserAuthentication.class.getCanonicalName();
         }
@@ -210,7 +210,7 @@ public final class OAuthServer {
             try {
                 builder.setUserAuthenticationClass(loadCustomUserAuthentication(userAuthClass, jarClassloader));
             } catch (ClassNotFoundException e) {
-                log.error("cannot load user.authenticate.class, check property value", e);
+                log.error("cannot load custom.authenticate.class, check property value", e);
             }
         }
         if (customGrantTypeClass != null && !customGrantTypeClass.isEmpty()) {
