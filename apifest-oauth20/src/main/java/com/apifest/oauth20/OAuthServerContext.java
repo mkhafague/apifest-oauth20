@@ -259,6 +259,38 @@ public final class OAuthServerContext {
             return https;
         }
 
+        public String getMongoDBUri() {
+            return mongoDBUri;
+        }
+
+        public String getDatabaseType() {
+            return databaseType;
+        }
+
+        public String getRedisSentinels() {
+            return redisSentinels;
+        }
+
+        public String getRedisMaster() {
+            return redisMaster;
+        }
+
+        public String getHazelcastClusterName() {
+            return hazelcastClusterName;
+        }
+
+        public String getHazelcastClusterMembers() {
+            return hazelcastClusterMembers;
+        }
+
+        public String getHazelcastPassword() {
+            return hazelcastPassword;
+        }
+
+        public boolean useEmbeddedHazelcast() {
+            return hazelcastClusterName != null && !(hazelcastClusterName.isEmpty());
+        }
+
         public OAuthServerContext build() {
             return new OAuthServerContext(host, portInt, databaseType, mongoDBUri, redisSentinels, redisMaster,
                                             hazelcastClusterName, hazelcastClusterMembers, hazelcastPassword,

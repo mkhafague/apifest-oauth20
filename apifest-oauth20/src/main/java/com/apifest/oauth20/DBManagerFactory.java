@@ -19,6 +19,7 @@
  */
 package com.apifest.oauth20;
 
+import com.apifest.oauth20.OAuthServerContext.OAuthServerContextBuilder;
 import com.apifest.oauth20.persistence.DBManager;
 import com.apifest.oauth20.persistence.hazelcast.HazelcastDBManager;
 import com.apifest.oauth20.persistence.mongodb.MongoDBManager;
@@ -36,14 +37,11 @@ public class DBManagerFactory {
         try {
             if (dbManager == null) {
                 OAuthServerContext ctx = OAuthServer.getContext();
-                if ("redis".equalsIgnoreCase(ctx.getDatabaseType())) {
-                    dbManager = new RedisDBManager(ctx.getRedisMaster(), ctx.getRedisSentinels());
-                } else if ("mongodb".equalsIgnoreCase(ctx.getDatabaseType())) {
-                    dbManager = new MongoDBManager(ctx.getMongoDBUri());
-                } else {
-                    dbManager = new HazelcastDBManager(ctx.getHazelcastClusterName(), ctx.getHazelcastPassword(),
-                            ctx.getHost(), ctx.getHazelcastClusterMembers(), ctx.useEmbeddedHazelcast());
-                }
+
+                getInstance(ctx.getDatabaseType(), ctx.getRedisMaster(),
+                        ctx.getRedisSentinels(), ctx.getMongoDBUri(),
+                        ctx.getHazelcastClusterName(), ctx.getHazelcastPassword(),
+                        ctx.getHost(), ctx.getHazelcastClusterMembers(), ctx.useEmbeddedHazelcast());
             }
             return dbManager;
         } finally {
@@ -51,8 +49,32 @@ public class DBManagerFactory {
         }
     }
 
-    public static void init() {
-        // that will instantiate a connection to the storage
-        getInstance();
+    public static DBManager init(OAuthServerContextBuilder builder) {
+        return getInstance(builder.getDatabaseType(), builder.getRedisMaster(),
+                        builder.getRedisSentinels(), builder.getMongoDBUri(),
+                        builder.getHazelcastClusterName(), builder.getHazelcastPassword(),
+                        builder.getHost(), builder.getHazelcastClusterMembers(), builder.useEmbeddedHazelcast());
+    }
+
+    private static DBManager getInstance(String dbType, String redisMaster, String redisSentinels,
+                                         String mongoDBUri, String hazelcastClusterName, String hazelcastPassword,
+                                         String host, String hazelcastClusterMembers, boolean useEmbeddedHazelcast) {
+        lock.lock();
+        try {
+            if (dbManager == null) {
+
+                if ("redis".equalsIgnoreCase(dbType)) {
+                    dbManager = new RedisDBManager(redisMaster, redisSentinels);
+                } else if ("mongodb".equalsIgnoreCase(dbType)) {
+                    dbManager = new MongoDBManager(mongoDBUri);
+                } else {
+                    dbManager = new HazelcastDBManager(hazelcastClusterName, hazelcastPassword,
+                            host, hazelcastClusterMembers, useEmbeddedHazelcast);
+                }
+            }
+            return dbManager;
+        } finally {
+            lock.unlock();
+        }
     }
 }

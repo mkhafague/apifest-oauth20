@@ -27,6 +27,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.security.KeyStore;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -100,7 +101,7 @@ public final class OAuthServer {
             System.exit(1);
         }
         log.info("Initializing database ...");
-        DBManagerFactory.init();
+        DBManagerFactory.init(builder);
         builder.setServerCredentials(setAuthServerContext(builder));
         context = builder.build();
         log.info("Initialized "+context.getDatabaseType()+" database ...");
@@ -373,7 +374,7 @@ public final class OAuthServer {
 	        map.put(TokenRequest.CLIENT_ID, cc.getId());
 	        map.put(TokenRequest.CLIENT_SECRET, cc.getSecret());
 	        
-	        return map;
+	        return Collections.unmodifiableMap(map);
     	}
     	
     	return null;
