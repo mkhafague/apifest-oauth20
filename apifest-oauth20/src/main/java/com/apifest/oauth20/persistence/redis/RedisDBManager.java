@@ -317,7 +317,7 @@ public class RedisDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.persistence.DBManager#updateClientAppScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#updateClientApp(java.lang.String, java.lang.String, java.lang.Integer, java.util.Map)
      */
     @Override
     public boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails) {
@@ -339,6 +339,20 @@ public class RedisDBManager implements DBManager {
         jedis.hmset(key, clientApp);
 		pool.returnResource(jedis);
         return true;
+    }
+
+    /*
+     * @see com.apifest.oauth20.persistence.DBManager#deleteClientApp(java.lang.String)
+     */
+    @Override
+    public boolean deleteClientApp(String clientId) {
+        String key = CLIENT_CREDENTIALS_PREFIX_NAME + clientId;
+        Jedis jedis = pool.getResource();
+        Long deleted = jedis.hdel(key);
+        pool.returnResource(jedis);
+
+        // 1 if deleted, 0 - nothing deleted
+        return (deleted.intValue() == 1);
     }
 
     /*

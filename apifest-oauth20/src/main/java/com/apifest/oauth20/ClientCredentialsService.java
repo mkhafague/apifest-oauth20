@@ -19,14 +19,16 @@ import java.io.IOException;
 public class ClientCredentialsService {
 
     // application errors
-    public static final String CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL = "{\"error\": \"name, scope or redirect_uri is missing or invalid\"}";
+    public static final String REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL = "{\"error\": \"name, scope or redirect_uri is missing or invalid\"}";
+    public static final String CANNOT_REGISTER_APP = "{\"error\": \"cannot register client application\"}";
     public static final String CANNOT_UPDATE_APP = "{\"error\": \"cannot update client application\"}";
+    public static final String CANNOT_DELETE_APP = "{\"error\": \"cannot delete client application\"}";
+
     public static final String UPDATE_APP_MANDATORY_PARAM_MISSING = "{\"error\": \"scope, description or status is missing or invalid\"}";
     public static final String ALREADY_REGISTERED_APP = "{\"error\": \"already registered client application\"}";
     public static final String CLIENT_APP_DOES_NOT_EXIST = "{\"error\": \"client application does not exist\"}";
     public static final String INACTIVE_CLIENT_CREDENTIALS = "{\"error\": \"client is inactive\"}";
     public static final String INVALID_CLIENT_CREDENTIALS = "{\"error\": \"invalid client_id/client_secret\"}";
-    public static final String CANNOT_REGISTER_APP = "{\"error\": \"cannot register client application\"}";
 
     // application messages
     public static final String CLIENT_APP_UPDATED = "{\"status\":\"client application updated\"}";
@@ -69,7 +71,7 @@ public class ClientCredentialsService {
                     }
                     db.storeClientCredentials(creds);
                 } else {
-                    throw new OAuthException(CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL, HttpResponseStatus.BAD_REQUEST);
+                    throw new OAuthException(REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL, HttpResponseStatus.BAD_REQUEST);
                 }
             } catch (JsonParseException e) {
                 throw new OAuthException(e, CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
@@ -96,7 +98,7 @@ public class ClientCredentialsService {
         }
     }
 
-    protected boolean updateClientCredentials(HttpRequest req, String clientId) throws OAuthException {
+    protected void updateClientCredentials(HttpRequest req, String clientId) throws OAuthException {
         String content = req.getContent().toString(CharsetUtil.UTF_8);
         String contentType = req.headers().get(HttpHeaders.Names.CONTENT_TYPE);
         if (contentType != null && contentType.contains(Response.APPLICATION_JSON)) {
@@ -105,7 +107,7 @@ public class ClientCredentialsService {
 //                throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
 //            }
             if (!isExistingClient(clientId)) {
-                throw new OAuthException(INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(CLIENT_APP_DOES_NOT_EXIST, HttpResponseStatus.BAD_REQUEST);
             }
             ObjectMapper mapper = new ObjectMapper();
             ApplicationInfo appInfo;
@@ -128,7 +130,21 @@ public class ClientCredentialsService {
         } else {
             throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
         }
-        return true;
+    }
+
+    protected void deleteClientCredentials(String clientId) throws OAuthException {
+        if (!isExistingClient(clientId)) {
+            throw new OAuthException(CLIENT_APP_DOES_NOT_EXIST, HttpResponseStatus.BAD_REQUEST);
+        }
+        try {
+            if (!db.deleteClientApp(clientId)) {
+                throw new OAuthException(CANNOT_DELETE_APP, HttpResponseStatus.BAD_REQUEST);
+            }
+        } catch (OAuthException oe) {
+            throw oe;
+        } catch (Exception e) {
+            throw new OAuthException(e, CANNOT_DELETE_APP, HttpResponseStatus.BAD_REQUEST);
+        }
     }
 
     protected boolean isActiveClientId(String clientId) {

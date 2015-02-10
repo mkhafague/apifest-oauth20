@@ -511,7 +511,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -534,7 +534,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -557,7 +557,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -580,7 +580,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -1573,7 +1573,29 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
-        assertEquals(message, ClientCredentialsService.INACTIVE_CLIENT_CREDENTIALS);
+        assertEquals(message, ClientCredentialsService.CLIENT_APP_DOES_NOT_EXIST);
+        verify(authServer.clientCredentialsService).isExistingClient(clientId);
+    }
+
+    @Test
+    public void when_delete_client_app_with_invalid_client_id_throws_oauth_exception_with_bad_request_status() throws Exception {
+        // GIVEN
+        String clientId = "203598599234220";
+        willReturn(false).given(authServer.clientCredentialsService).isExistingClient(clientId);
+
+        // WHEN
+        HttpResponseStatus status = null;
+        String message = null;
+        try {
+            authServer.clientCredentialsService.deleteClientCredentials(clientId);
+        } catch(OAuthException e) {
+            status = e.getHttpStatus();
+            message = e.getMessage();
+        }
+
+        // THEN
+        assertEquals(status, HttpResponseStatus.BAD_REQUEST);
+        assertEquals(message, ClientCredentialsService.CLIENT_APP_DOES_NOT_EXIST);
         verify(authServer.clientCredentialsService).isExistingClient(clientId);
     }
 
@@ -1667,6 +1689,20 @@ public class AuthorizationServerTest {
 
         // WHEN
         authServer.clientCredentialsService.updateClientCredentials(req, clientId);
+
+        // THEN
+        verify(authServer.clientCredentialsService).isExistingClient(clientId);
+    }
+
+    @Test
+    public void when_delete_client_app_check_client_id_exists() throws Exception {
+        // GIVEN
+        String clientId = "203598599234220";
+        willReturn(true).given(authServer.clientCredentialsService).isExistingClient(clientId);
+        willReturn(true).given(authServer.db).deleteClientApp(clientId);
+
+        // WHEN
+        authServer.clientCredentialsService.deleteClientCredentials(clientId);
 
         // THEN
         verify(authServer.clientCredentialsService).isExistingClient(clientId);

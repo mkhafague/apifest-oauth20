@@ -221,7 +221,7 @@ public class HazelcastDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.persistence.DBManager#updateClientAppScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#updateClientApp(java.lang.String, java.lang.String, java.lang.Integer, java.util.Map)
      */
     @Override
     public boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails) {
@@ -240,6 +240,15 @@ public class HazelcastDBManager implements DBManager {
         }
         getClientCredentialsContainer().put(clientId, clientCredentials);
         return true;
+    }
+
+    /*
+     * @see com.apifest.oauth20.persistence.DBManager#deleteClientApp(java.lang.String)
+     */
+    @Override
+    public boolean deleteClientApp(String clientId) {
+        PersistentClientCredentials cc = getClientCredentialsContainer().remove(clientId);
+        return cc != null;
     }
 
     /*

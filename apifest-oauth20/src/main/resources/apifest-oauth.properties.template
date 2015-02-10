@@ -19,7 +19,6 @@ hazelcast.password=
 hazelcast.cluster.members=
 
 custom.classes.jar=
-user.authenticate.class=
-custom.grant_type=
+custom.authenticate.class=
 custom.grant_type.class=
 

@@ -107,7 +107,7 @@ public class HttpRequestHandlerTest {
         ClientCredentialsService service = mock(ClientCredentialsService.class);
         willReturn(service).given(handler).getClientCredentialsService();
         willThrow(
-                new OAuthException(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL,
+                new OAuthException(ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL,
                         HttpResponseStatus.BAD_REQUEST)).given(service).issueClientCredentials(req);
 
         // WHEN
@@ -115,7 +115,7 @@ public class HttpRequestHandlerTest {
 
         // THEN
         String res = response.getContent().toString(CharsetUtil.UTF_8);
-        assertTrue(res.contains(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL));
+        assertTrue(res.contains(ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL));
     }
 
     @Test
@@ -139,7 +139,7 @@ public class HttpRequestHandlerTest {
     public void when_OAuthException_return_response_with_exception_status() throws Exception {
         // GIVEN
         HttpRequest req = mock(HttpRequest.class);
-        OAuthException ex = new OAuthException(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL,
+        OAuthException ex = new OAuthException(ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL,
                 HttpResponseStatus.BAD_REQUEST);
         ClientCredentialsService service = mock(ClientCredentialsService.class);
         willReturn(service).given(handler).getClientCredentialsService();

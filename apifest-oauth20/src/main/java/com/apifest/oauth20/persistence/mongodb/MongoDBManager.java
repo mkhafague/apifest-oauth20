@@ -390,7 +390,7 @@ public class MongoDBManager implements DBManager {
     }
 
     /*
-     * @see com.apifest.oauth20.persistence.DBManager#updateClientAppScope(java.lang.String)
+     * @see com.apifest.oauth20.persistence.DBManager#updateClientApp(java.lang.String, java.lang.String, java.lang.Integer, java.util.Map)
      */
     @Override
     public boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails) {
@@ -416,6 +416,17 @@ public class MongoDBManager implements DBManager {
             updated = true;
         }
         return updated;
+    }
+
+    /*
+     * @see com.apifest.oauth20.persistence.DBManager#deleteClientApp(java.lang.String)
+     */
+    @Override
+    public boolean deleteClientApp(String clientId) {
+        DBCollection coll = db.getCollection(CLIENTS_COLLECTION_NAME);
+        BasicDBObject query = new BasicDBObject(CLIENTS_ID, clientId);
+        WriteResult result = coll.remove(query);
+        return (result.getN() == 1);
     }
 
     /*

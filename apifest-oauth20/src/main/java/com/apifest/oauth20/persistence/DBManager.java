@@ -153,6 +153,14 @@ public interface DBManager {
     boolean updateClientApp(String clientId, String scope, String description, Integer status, Map<String, String> applicationDetails);
 
     /**
+     * Deletes a client application.
+     *
+     * @param clientId the clientId of the client app
+     * @return <code>true</code> if the update is successful, <code>false</code> otherwise
+     */
+    boolean deleteClientApp(String clientId);
+
+    /**
      * Lists all client applications stored in the DB.
      *
      * @return {@link List} of all registered client applications

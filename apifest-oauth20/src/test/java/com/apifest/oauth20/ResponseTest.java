@@ -47,7 +47,7 @@ public class ResponseTest {
     public void when_get_exception_response_get_exception_HTTP_status() throws Exception {
         // GIVEN
         OAuthException ex = mock(OAuthException.class);
-        willReturn(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL).given(ex).getMessage();
+        willReturn(ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL).given(ex).getMessage();
         willReturn(HttpResponseStatus.BAD_REQUEST).given(ex).getHttpStatus();
 
         // WHEN
@@ -59,7 +59,7 @@ public class ResponseTest {
                 HttpHeaders.Values.NO_STORE);
         assertEquals(response.headers().get(HttpHeaders.Names.PRAGMA), HttpHeaders.Values.NO_CACHE);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_LENGTH),
-                String.valueOf(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL.getBytes().length));
+                String.valueOf(ClientCredentialsService.REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL.getBytes().length));
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_TYPE), Response.APPLICATION_JSON);
         verify(ex).getMessage();
     }

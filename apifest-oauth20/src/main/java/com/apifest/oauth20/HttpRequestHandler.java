@@ -169,7 +169,10 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 	            	} else if (method.equals(HttpMethod.PUT)) {
 		            	checkSecurityRestrictions(ctx, rawUri, req);
 		                response = handleUpdateClientApplication(req);
-		            } else {
+                    } else if (method.equals(HttpMethod.DELETE)) {
+                        checkSecurityRestrictions(ctx, rawUri, req);
+                        response = handleDeleteClientApplication(req);
+                    } else {
 		            	response = Response.createNotFoundResponse();
 		            }
 	            } else if (AUTH_CODE_URI.equals(rawUri) && method.equals(HttpMethod.GET)) {
@@ -560,14 +563,13 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleUpdateClientApplication(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         Matcher m = APPLICATION_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String clientId = m.group(1);
             try {
-                if (getClientCredentialsService().updateClientCredentials(req, clientId)) {
-                    response = Response.createOkResponse(ClientCredentialsService.CLIENT_APP_UPDATED);
-                }
+                getClientCredentialsService().updateClientCredentials(req, clientId);
+                response = Response.createOkResponse(ClientCredentialsService.CLIENT_APP_UPDATED);
             } catch (OAuthException ex) {
                 response = Response.createOAuthExceptionResponse(ex);
                 invokeExceptionHandler(ex, req);
@@ -578,17 +580,14 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         return response;
     }
 
-    // TODO
-    /**
     protected HttpResponse handleDeleteClientApplication(HttpRequest req) {
         HttpResponse response = null;
         Matcher m = APPLICATION_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String clientId = m.group(1);
             try {
-                if (getClientCredentialsService().deleteClientCredentials( req, clientId)) {
-                    response = Response.createOkResponse(Response.CLIENT_APP_REMOVED);
-                }
+                getClientCredentialsService().deleteClientCredentials(clientId);
+                response = Response.createOkResponse(ClientCredentialsService.CLIENT_APP_REMOVED);
             } catch (OAuthException ex) {
                 response = Response.createOAuthExceptionResponse( ex);
                 invokeExceptionHandler( ex, req );
@@ -598,7 +597,6 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         }
         return response;
     }
-    **/
 
     protected HttpResponse handleGetAllClientApplications(HttpRequest req) {
         List<ClientCredentials> apps = filterClientApps(req, DBManagerFactory.getInstance().getAllApplications());
