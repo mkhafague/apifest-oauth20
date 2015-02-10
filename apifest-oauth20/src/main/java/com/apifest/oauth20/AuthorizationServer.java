@@ -373,7 +373,7 @@ public class AuthorizationServer {
         String clientId = revokeRequest.getClientId();
         // check valid client_id, status does not matter as token of inactive client app could be revoked too
         if (!clientCredentialsService.isExistingClient(clientId)) {
-            throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+            throw new OAuthException(ClientCredentialsService.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
         }
         String token = revokeRequest.getAccessToken();
         AccessToken accessToken = db.findAccessToken(token);

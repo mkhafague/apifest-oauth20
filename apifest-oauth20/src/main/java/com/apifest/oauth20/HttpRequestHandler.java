@@ -257,7 +257,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
                     invokeExceptionHandler(e, req);
                 }
             } else {
-                response = Response.createResponse(HttpResponseStatus.NOT_FOUND, Response.CLIENT_APP_DOES_NOT_EXIST);
+                response = Response.createResponse(HttpResponseStatus.NOT_FOUND, ClientCredentialsService.CLIENT_APP_DOES_NOT_EXIST);
             }
         } else {
             response = Response.createNotFoundResponse();
@@ -451,7 +451,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             invokeExceptionHandler(e1, req);
         }
         if (response == null) {
-            response = Response.createBadRequestResponse(Response.CANNOT_REGISTER_APP);
+            response = Response.createBadRequestResponse(ClientCredentialsService.CANNOT_REGISTER_APP);
         }
         return response;
     }
@@ -566,7 +566,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
             String clientId = m.group(1);
             try {
                 if (getClientCredentialsService().updateClientCredentials(req, clientId)) {
-                    response = Response.createOkResponse(Response.CLIENT_APP_UPDATED);
+                    response = Response.createOkResponse(ClientCredentialsService.CLIENT_APP_UPDATED);
                 }
             } catch (OAuthException ex) {
                 response = Response.createOAuthExceptionResponse(ex);
@@ -577,6 +577,28 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         }
         return response;
     }
+
+    // TODO
+    /**
+    protected HttpResponse handleDeleteClientApplication(HttpRequest req) {
+        HttpResponse response = null;
+        Matcher m = APPLICATION_PATTERN.matcher(req.getUri());
+        if (m.find()) {
+            String clientId = m.group(1);
+            try {
+                if (getClientCredentialsService().deleteClientCredentials( req, clientId)) {
+                    response = Response.createOkResponse(Response.CLIENT_APP_REMOVED);
+                }
+            } catch (OAuthException ex) {
+                response = Response.createOAuthExceptionResponse( ex);
+                invokeExceptionHandler( ex, req );
+            }
+        } else {
+            response = Response.createNotFoundResponse();
+        }
+        return response;
+    }
+    **/
 
     protected HttpResponse handleGetAllClientApplications(HttpRequest req) {
         List<ClientCredentials> apps = filterClientApps(req, DBManagerFactory.getInstance().getAllApplications());
@@ -623,7 +645,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
         } else {
             // check that clientId exists, no matter whether it is active or not
             if (!getClientCredentialsService().isExistingClient(clientId)) {
-                response = Response.createBadRequestResponse(Response.INACTIVE_CLIENT_CREDENTIALS);
+                response = Response.createBadRequestResponse(ClientCredentialsService.INACTIVE_CLIENT_CREDENTIALS);
             } else {
                 List<AccessToken> accessTokens = DBManagerFactory.getInstance().getAccessTokenByUserIdAndClientApp(userId, clientId);
                 Gson gson = new Gson();

@@ -100,6 +100,7 @@ Unless overridden, the following default values are set for the connection: ```c
 * **Setup Redis**
 
 If Redis is used, define Redis sentinels list(as comma-separated list) in the following property in the apifest-oauth.properties file:
+N.B: Redis code uses the SCAN command which requires 2.8.0+ versions
 
 ***redis.sentinels***
 

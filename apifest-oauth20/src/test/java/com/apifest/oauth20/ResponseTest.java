@@ -47,7 +47,7 @@ public class ResponseTest {
     public void when_get_exception_response_get_exception_HTTP_status() throws Exception {
         // GIVEN
         OAuthException ex = mock(OAuthException.class);
-        willReturn(Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL).given(ex).getMessage();
+        willReturn(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL).given(ex).getMessage();
         willReturn(HttpResponseStatus.BAD_REQUEST).given(ex).getHttpStatus();
 
         // WHEN
@@ -59,7 +59,7 @@ public class ResponseTest {
                 HttpHeaders.Values.NO_STORE);
         assertEquals(response.headers().get(HttpHeaders.Names.PRAGMA), HttpHeaders.Values.NO_CACHE);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_LENGTH),
-                String.valueOf(Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL.getBytes().length));
+                String.valueOf(ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL.getBytes().length));
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_TYPE), Response.APPLICATION_JSON);
         verify(ex).getMessage();
     }
@@ -67,12 +67,12 @@ public class ResponseTest {
     @Test
     public void when_create_response_with_message_set_content_type() throws Exception {
         // WHEN
-        HttpResponse response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, Response.ALREADY_REGISTERED_APP);
+        HttpResponse response = Response.createResponse(HttpResponseStatus.BAD_REQUEST, ClientCredentialsService.ALREADY_REGISTERED_APP);
 
         // THEN
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_TYPE), Response.APPLICATION_JSON);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_LENGTH),
-                String.valueOf(Response.ALREADY_REGISTERED_APP.getBytes().length));
+                String.valueOf(ClientCredentialsService.ALREADY_REGISTERED_APP.getBytes().length));
         assertEquals(response.headers().get(HttpHeaders.Names.CACHE_CONTROL),
                 HttpHeaders.Values.NO_STORE);
         assertEquals(response.headers().get(HttpHeaders.Names.PRAGMA), HttpHeaders.Values.NO_CACHE);
@@ -96,7 +96,7 @@ public class ResponseTest {
     @Test
     public void when_create_ok_response_with_message_set_headers() throws Exception {
         // WHEN
-        HttpResponse response = Response.createOkResponse(Response.CLIENT_APP_UPDATED);
+        HttpResponse response = Response.createOkResponse(ClientCredentialsService.CLIENT_APP_UPDATED);
 
         // THEN
         assertEquals(response.getStatus(), HttpResponseStatus.OK);
@@ -105,7 +105,7 @@ public class ResponseTest {
         assertEquals(response.headers().get(HttpHeaders.Names.PRAGMA), HttpHeaders.Values.NO_CACHE);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_TYPE), Response.APPLICATION_JSON);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_LENGTH),
-                String.valueOf(Response.CLIENT_APP_UPDATED.getBytes().length));
+                String.valueOf(ClientCredentialsService.CLIENT_APP_UPDATED.getBytes().length));
     }
 
     @Test
@@ -126,7 +126,7 @@ public class ResponseTest {
     @Test
     public void when_create_bad_request_response_with_message_set_headers() throws Exception {
         // WHEN
-        HttpResponse response = Response.createBadRequestResponse(Response.CANNOT_REGISTER_APP);
+        HttpResponse response = Response.createBadRequestResponse(ClientCredentialsService.CANNOT_REGISTER_APP);
 
         // THEN
         assertEquals(response.getStatus(), HttpResponseStatus.BAD_REQUEST);
@@ -135,7 +135,7 @@ public class ResponseTest {
         assertEquals(response.headers().get(HttpHeaders.Names.PRAGMA), HttpHeaders.Values.NO_CACHE);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_TYPE), Response.APPLICATION_JSON);
         assertEquals(response.headers().get(HttpHeaders.Names.CONTENT_LENGTH),
-                String.valueOf(Response.CANNOT_REGISTER_APP.getBytes().length));
+                String.valueOf(ClientCredentialsService.CANNOT_REGISTER_APP.getBytes().length));
     }
 
     @Test

@@ -16,8 +16,30 @@
 
 package com.apifest.oauth20;
 
-import com.apifest.oauth20.api.UserDetails;
-import com.apifest.oauth20.persistence.DBManager;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertNotEquals;
+import static org.testng.Assert.assertNotNull;
+import static org.testng.Assert.assertNull;
+import static org.testng.Assert.assertTrue;
+
+import java.io.File;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpStatus;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -33,22 +55,8 @@ import org.slf4j.Logger;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import java.io.File;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.mockito.BDDMockito.*;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyBoolean;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.testng.Assert.*;
+import com.apifest.oauth20.api.UserDetails;
+import com.apifest.oauth20.persistence.DBManager;
 
 /**
  * @author Rossitsa Borissova
@@ -503,7 +511,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -526,7 +534,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -549,7 +557,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -572,7 +580,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
+        assertEquals(errorMsg, ClientCredentialsService.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL);
     }
 
     @Test
@@ -1067,7 +1075,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.INACTIVE_CLIENT_CREDENTIALS);
+        assertEquals(errorMsg, ClientCredentialsService.INACTIVE_CLIENT_CREDENTIALS);
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
     }
 
@@ -1399,7 +1407,7 @@ public class AuthorizationServerTest {
         }
 
         // THEN
-        assertEquals(errorMsg, Response.ALREADY_REGISTERED_APP);
+        assertEquals(errorMsg, ClientCredentialsService.ALREADY_REGISTERED_APP);
     }
 
     @Test
@@ -1565,7 +1573,7 @@ public class AuthorizationServerTest {
 
         // THEN
         assertEquals(status, HttpResponseStatus.BAD_REQUEST);
-        assertEquals(message, Response.INACTIVE_CLIENT_CREDENTIALS);
+        assertEquals(message, ClientCredentialsService.INACTIVE_CLIENT_CREDENTIALS);
         verify(authServer.clientCredentialsService).isExistingClient(clientId);
     }
 

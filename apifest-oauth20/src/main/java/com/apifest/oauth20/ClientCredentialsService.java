@@ -18,6 +18,20 @@ import java.io.IOException;
  */
 public class ClientCredentialsService {
 
+    // application errors
+    public static final String CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL = "{\"error\": \"name, scope or redirect_uri is missing or invalid\"}";
+    public static final String CANNOT_UPDATE_APP = "{\"error\": \"cannot update client application\"}";
+    public static final String UPDATE_APP_MANDATORY_PARAM_MISSING = "{\"error\": \"scope, description or status is missing or invalid\"}";
+    public static final String ALREADY_REGISTERED_APP = "{\"error\": \"already registered client application\"}";
+    public static final String CLIENT_APP_DOES_NOT_EXIST = "{\"error\": \"client application does not exist\"}";
+    public static final String INACTIVE_CLIENT_CREDENTIALS = "{\"error\": \"client is inactive\"}";
+    public static final String INVALID_CLIENT_CREDENTIALS = "{\"error\": \"invalid client_id/client_secret\"}";
+    public static final String CANNOT_REGISTER_APP = "{\"error\": \"cannot register client application\"}";
+
+    // application messages
+    public static final String CLIENT_APP_UPDATED = "{\"status\":\"client application updated\"}";
+    public static final String CLIENT_APP_REMOVED = "{\"status\":\"client application removed\"}";
+
     protected DBManager db = DBManagerFactory.getInstance();
 
     /**
@@ -47,7 +61,7 @@ public class ClientCredentialsService {
                             creds = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
                                     appInfo.getRedirectUri(), appInfo.getId(), appInfo.getSecret(), appInfo.getApplicationDetails());
                         } else {
-                            throw new OAuthException(Response.ALREADY_REGISTERED_APP, HttpResponseStatus.BAD_REQUEST);
+                            throw new OAuthException(ALREADY_REGISTERED_APP, HttpResponseStatus.BAD_REQUEST);
                         }
                     } else {
                         creds = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
@@ -55,14 +69,14 @@ public class ClientCredentialsService {
                     }
                     db.storeClientCredentials(creds);
                 } else {
-                    throw new OAuthException(Response.CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL, HttpResponseStatus.BAD_REQUEST);
+                    throw new OAuthException(CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL, HttpResponseStatus.BAD_REQUEST);
                 }
             } catch (JsonParseException e) {
-                throw new OAuthException(e, Response.CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
-                throw new OAuthException(e, Response.CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
-                throw new OAuthException(e, Response.CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, CANNOT_REGISTER_APP, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
             throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);
@@ -91,7 +105,7 @@ public class ClientCredentialsService {
 //                throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
 //            }
             if (!isExistingClient(clientId)) {
-                throw new OAuthException(Response.INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(INACTIVE_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             }
             ObjectMapper mapper = new ObjectMapper();
             ApplicationInfo appInfo;
@@ -102,14 +116,14 @@ public class ClientCredentialsService {
                     db.updateClientApp(clientId, appInfo.getScope(), appInfo.getDescription(), appInfo.getStatus(),
                             appInfo.getApplicationDetails());
                 } else {
-                    throw new OAuthException(Response.UPDATE_APP_MANDATORY_PARAM_MISSING, HttpResponseStatus.BAD_REQUEST);
+                    throw new OAuthException(UPDATE_APP_MANDATORY_PARAM_MISSING, HttpResponseStatus.BAD_REQUEST);
                 }
             } catch (JsonParseException e) {
-                throw new OAuthException(e, Response.CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
-                throw new OAuthException(e, Response.CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
-                throw new OAuthException(e, Response.CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, CANNOT_UPDATE_APP, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
             throw new OAuthException(Response.UNSUPPORTED_MEDIA_TYPE, HttpResponseStatus.BAD_REQUEST);

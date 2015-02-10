@@ -33,21 +33,10 @@ import org.jboss.netty.util.CharsetUtil;
 public final class Response {
 
     public static final String APPLICATION_JSON = "application/json";
+
     public static final String NOT_FOUND = "{\"error\":\"not found\"}";
     public static final String UNSUPPORTED_MEDIA_TYPE = "{\"error\": \"unsupported media type\"}";
     public static final String MANDATORY_PARAM_MISSING = "{\"error\": \"mandatory parameter %s is missing\"}";
-
-    // application errors
-    public static final String CANNOT_REGISTER_APP_NAME_OR_SCOPE_OR_URI_IS_NULL = "{\"error\": \"name, scope or redirect_uri is missing or invalid\"}";
-    public static final String CANNOT_UPDATE_APP = "{\"error\": \"cannot update client application\"}";
-    public static final String CANNOT_REGISTER_APP = "{\"error\": \"cannot register client application\"}";
-    public static final String UPDATE_APP_MANDATORY_PARAM_MISSING = "{\"error\": \"scope, description or status is missing or invalid\"}";
-    public static final String ALREADY_REGISTERED_APP = "{\"error\": \"already registered client application\"}";
-    public static final String CLIENT_APP_DOES_NOT_EXIST = "{\"error\": \"client application does not exist\"}";
-    public static final String INACTIVE_CLIENT_CREDENTIALS = "{\"error\": \"client is inactive\"}";
-    public static final String INVALID_CLIENT_CREDENTIALS = "{\"error\": \"invalid client_id/client_secret\"}";
-    // client credentials message TODO move to cc service ?
-    public static final String CLIENT_APP_UPDATED = "{\"status\":\"client application updated\"}";
 
     public static HttpResponse createBadRequestResponse() {
         return createBadRequestResponse(null);

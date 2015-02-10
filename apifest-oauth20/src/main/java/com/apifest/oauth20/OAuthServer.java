@@ -104,7 +104,7 @@ public final class OAuthServer {
         DBManagerFactory.init(builder);
         builder.setServerCredentials(setAuthServerContext(builder));
         context = builder.build();
-        log.info("Initialized "+context.getDatabaseType()+" database ...");
+        log.info("Successfully initialized "+context.getDatabaseType()+" database");
 
         ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
                 Executors.newCachedThreadPool());
@@ -204,12 +204,12 @@ public final class OAuthServer {
         }
 
         if (customJar == null || customJar.isEmpty()) {
-            log.warn("Set value for custom.classes.jar in properties file to load custom classes from this jar\n" +
-                        "Otherwise user authentication will always pass successfully if using default implementation");
+            log.warn("No custom jar loaded (see property custom.classes.jar in properties file)");
         }
         if (userAuthClass != null && userAuthClass.length() > 0) {
             try {
                 builder.setUserAuthenticationClass(loadCustomUserAuthentication(userAuthClass, jarClassloader));
+                log.info("Loaded custom authentication implementation {}", userAuthClass);
             } catch (ClassNotFoundException e) {
                 log.error("cannot load custom.authenticate.class, check property value", e);
             }
@@ -217,6 +217,7 @@ public final class OAuthServer {
         if (customGrantTypeClass != null && !customGrantTypeClass.isEmpty()) {
             try {
                 builder.setCustomGrantTypeHandler(loadCustomGrantType(customGrantTypeClass, builder, jarClassloader));
+                log.info("Loaded custom grant type handler implementation {}", customGrantTypeClass);
             } catch (ClassNotFoundException e) {
                 log.error("cannot load custom.grant_type.class, check property value", e);
             }
@@ -280,7 +281,6 @@ public final class OAuthServer {
         return null;
     }
 
-    @SuppressWarnings("unchecked")
     protected static Properties setupProperties(InputStream in, OAuthServerContextBuilder builder) {
         Properties props = new Properties();
         try {

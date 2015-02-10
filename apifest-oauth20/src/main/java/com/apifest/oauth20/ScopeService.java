@@ -377,16 +377,16 @@ public class ScopeService {
                 jsonString = mapper.writeValueAsString(result);
             } catch (JsonGenerationException e) {
                 log.error("cannot load scopes per clientId", e);
-                throw new OAuthException(e, Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, ClientCredentialsService.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             } catch (JsonMappingException e) {
                 log.error("cannot load scopes per clientId", e);
-                throw new OAuthException(e, Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, ClientCredentialsService.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             } catch (IOException e) {
                 log.error("cannot load scopes per clientId", e);
-                throw new OAuthException(e, Response.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
+                throw new OAuthException(e, ClientCredentialsService.INVALID_CLIENT_CREDENTIALS, HttpResponseStatus.BAD_REQUEST);
             }
         } else {
-            throw new OAuthException(Response.CLIENT_APP_DOES_NOT_EXIST, HttpResponseStatus.NOT_FOUND);
+            throw new OAuthException(ClientCredentialsService.CLIENT_APP_DOES_NOT_EXIST, HttpResponseStatus.NOT_FOUND);
         }
         return jsonString;
     }
