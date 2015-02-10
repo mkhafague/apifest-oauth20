@@ -61,7 +61,7 @@ public class AuthorizationServer {
             Class<ICustomGrantTypeHandler> userCustomGrantTypeHandler) {
         this.userAuthenticationClass = userAuthenticationClass;
         this.userCustomGrantTypeHandler = userCustomGrantTypeHandler;
-        this.customGrantType = userCustomGrantTypeHandler.getAnnotation(GrantType.class).name();
+        this.customGrantType = userCustomGrantTypeHandler == null ? null : userCustomGrantTypeHandler.getAnnotation(GrantType.class).name();
     }
 
     // /authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz&redirect_uri=https%3A%2F%2Fclient%2Eexample%2Ecom%2Fcb
