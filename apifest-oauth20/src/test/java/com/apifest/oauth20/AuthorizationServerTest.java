@@ -312,7 +312,7 @@ public class AuthorizationServerTest {
 
         // THEN
         verify(authServer).findAuthCode(any(TokenRequest.class));
-        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS).toString());
+        assertEquals(errorMsg, new TokenError(TokenErrorTypes.INVALID_CLIENT_CREDENTIALS).toString());
     }
 
     @Test

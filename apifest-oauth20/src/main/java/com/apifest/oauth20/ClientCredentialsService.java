@@ -90,7 +90,6 @@ public class ClientCredentialsService {
         if (appInfo.getScope() != null) {
             String[] scopeList = appInfo.getScope().split(" ");
             for (String s : scopeList) {
-                // TODO: add cache for scope
                 if (db.findScope(s) == null) {
                     throw new OAuthException(ScopeService.SCOPE_DOES_NOT_EXIST_ERROR, HttpResponseStatus.BAD_REQUEST);
                 }

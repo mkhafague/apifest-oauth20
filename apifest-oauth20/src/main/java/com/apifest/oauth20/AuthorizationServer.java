@@ -100,7 +100,7 @@ public class AuthorizationServer {
 		// TODO: REVISIT: Move client_id check to db query
 		if (authCode != null) {
 			if (!tokenRequest.getClientId().equals(authCode.getClientId())) {
-				throw new OAuthException(new TokenError(TokenErrorTypes.INACTIVE_CLIENT_CREDENTIALS, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);
+				throw new OAuthException(new TokenError(TokenErrorTypes.INVALID_CLIENT_CREDENTIALS, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);
 			}
 			if (authCode.getRedirectUri() != null && !tokenRequest.getRedirectUri().equals(authCode.getRedirectUri())) {
 				throw new OAuthException(new TokenError(TokenErrorTypes.INVALID_REDIRECT_URI, tokenRequest.getState()), HttpResponseStatus.BAD_REQUEST);

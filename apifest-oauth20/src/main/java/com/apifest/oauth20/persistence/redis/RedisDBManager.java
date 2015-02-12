@@ -123,12 +123,12 @@ public class RedisDBManager implements DBManager {
 
         String key = AUTH_CODE_PREFIX_NAME + authCode.getCode();
         jedis.hmset(key, authCodeMap);        
-		// REVISIT: expires on auth code
-        jedis.expire(key, 1800); // TODO what is that constant ???!
+		// TODO REVISIT: expires on auth code
+        jedis.expire(key, AuthCode.EXPIRES_IN_SEC);
 		
 		key = AUTH_CODE_MAP_PREFIX_NAME + authCode.getCode() + authCode.getRedirectUri();
         jedis.hset(key, "ac", authCode.getCode());
-        jedis.expire(key, 1800); // TODO what is that constant ???!
+        jedis.expire(key, AuthCode.EXPIRES_IN_SEC);
         pool.returnResource(jedis);
     }
 
@@ -223,7 +223,6 @@ public class RedisDBManager implements DBManager {
     @Override
     public AuthCode findAuthCode(String authCode, String redirectUri) {
         Jedis jedis = pool.getResource();
-        // TODO: check by client_id too
         Map<String, String> authCodeIdMap = jedis.hgetAll(AUTH_CODE_MAP_PREFIX_NAME + authCode + redirectUri);
         String authCodeId = authCodeIdMap.get("ac");
         Map<String, String> authCodeMap = jedis.hgetAll(AUTH_CODE_PREFIX_NAME + authCodeId);

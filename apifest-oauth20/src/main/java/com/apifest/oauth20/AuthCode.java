@@ -34,6 +34,8 @@ public class AuthCode {
      */
     private static final int AUTH_CODE_LENGTH = 200;
 
+    public static final int EXPIRES_IN_SEC = 1800;
+
     private String id;
     private String code;
     private String clientId;
