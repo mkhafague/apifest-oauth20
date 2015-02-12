@@ -38,8 +38,9 @@ public final class OAuthServerContext {
 
     private String databaseType;
     private String mongoDBUri;
-    private String redisSentinels;
     private String redisMaster;
+    private String redisSentinels;
+    private String redisPassword;
     private String hazelcastClusterName;
     private String hazelcastClusterMembers;
     private String hazelcastPassword;
@@ -49,7 +50,7 @@ public final class OAuthServerContext {
     private SubnetRange allowedIPs;
     private Map<String, String> serverCredentials;
 
-    private OAuthServerContext(String host, int portInt, String databaseType, String mongoDBUri, String redisSentinels, String redisMaster,
+    private OAuthServerContext(String host, int portInt, String databaseType, String mongoDBUri, String redisSentinels, String redisMaster, String redisPassword,
                               String hazelcastClusterName, String hazelcastClusterMembers, String hazelcastPassword,
                               boolean https, boolean productionMode, SubnetRange allowedIPs, Map<String, String> serverCredentials,
                               String customGrantType, Class<ICustomGrantTypeHandler> customGrantTypeHandler, Class<IUserAuthentication> userAuthenticationClass) {
@@ -59,8 +60,9 @@ public final class OAuthServerContext {
         this.portInt = portInt;
         this.databaseType = databaseType;
         this.mongoDBUri = mongoDBUri;
-        this.redisSentinels = redisSentinels;
         this.redisMaster = redisMaster;
+        this.redisSentinels = redisSentinels;
+        this.redisPassword = redisPassword;
         this.hazelcastClusterName = hazelcastClusterName;
         this.hazelcastClusterMembers = hazelcastClusterMembers;
         this.hazelcastPassword = hazelcastPassword;
@@ -99,12 +101,16 @@ public final class OAuthServerContext {
         return mongoDBUri;
     }
 
+    public String getRedisMaster() {
+        return redisMaster;
+    }
+
     public String getRedisSentinels() {
         return redisSentinels;
     }
 
-    public String getRedisMaster() {
-        return redisMaster;
+    public String getRedisPassword() {
+        return redisPassword;
     }
 
     public String getHazelcastClusterName() {
@@ -151,6 +157,7 @@ public final class OAuthServerContext {
         private String mongoDBUri;
         private String redisSentinels;
         private String redisMaster;
+        private String redisPassword;
         private String hazelcastClusterName;
         private String hazelcastClusterMembers;
         private String hazelcastPassword;
@@ -205,6 +212,11 @@ public final class OAuthServerContext {
 
         public OAuthServerContextBuilder setRedisMaster(String redisMaster) {
             this.redisMaster = redisMaster;
+            return this;
+        }
+
+        public OAuthServerContextBuilder setRedisPassword(String redisPassword) {
+            this.redisPassword = redisPassword;
             return this;
         }
 
@@ -275,6 +287,10 @@ public final class OAuthServerContext {
             return redisMaster;
         }
 
+        public String getRedisPassword() {
+            return redisPassword;
+        }
+
         public String getHazelcastClusterName() {
             return hazelcastClusterName;
         }
@@ -292,7 +308,7 @@ public final class OAuthServerContext {
         }
 
         public OAuthServerContext build() {
-            return new OAuthServerContext(host, portInt, databaseType, mongoDBUri, redisSentinels, redisMaster,
+            return new OAuthServerContext(host, portInt, databaseType, mongoDBUri, redisSentinels, redisMaster, redisPassword,
                                             hazelcastClusterName, hazelcastClusterMembers, hazelcastPassword,
                                             https, productionMode, allowedIPs, serverCredentials,
                                             customGrantType, customGrantTypeHandler, userAuthenticationClass);

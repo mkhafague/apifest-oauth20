@@ -288,8 +288,9 @@ public final class OAuthServer {
             setHostAndPort(props, builder);
 
             builder.setDatabaseType(props.getProperty("oauth20.database"));
-            builder.setRedisSentinels(props.getProperty("redis.sentinels"));
             builder.setRedisMaster(props.getProperty("redis.master"));
+            builder.setRedisSentinels(props.getProperty("redis.sentinels"));
+            builder.setRedisPassword(props.getProperty("redis.password"));
             String mongoDBUri = props.getProperty("mongodb.uri");
             if (mongoDBUri == null || mongoDBUri.length() == 0) {
                 mongoDBUri = "localhost";

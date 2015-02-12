@@ -39,7 +39,7 @@ public class DBManagerFactory {
                 OAuthServerContext ctx = OAuthServer.getContext();
 
                 getInstance(ctx.getDatabaseType(), ctx.getRedisMaster(),
-                        ctx.getRedisSentinels(), ctx.getMongoDBUri(),
+                        ctx.getRedisSentinels(), ctx.getRedisPassword(), ctx.getMongoDBUri(),
                         ctx.getHazelcastClusterName(), ctx.getHazelcastPassword(),
                         ctx.getHost(), ctx.getHazelcastClusterMembers(), ctx.useEmbeddedHazelcast());
             }
@@ -51,12 +51,12 @@ public class DBManagerFactory {
 
     public static DBManager init(OAuthServerContextBuilder builder) {
         return getInstance(builder.getDatabaseType(), builder.getRedisMaster(),
-                        builder.getRedisSentinels(), builder.getMongoDBUri(),
+                        builder.getRedisSentinels(), builder.getRedisPassword(), builder.getMongoDBUri(),
                         builder.getHazelcastClusterName(), builder.getHazelcastPassword(),
                         builder.getHost(), builder.getHazelcastClusterMembers(), builder.useEmbeddedHazelcast());
     }
 
-    private static DBManager getInstance(String dbType, String redisMaster, String redisSentinels,
+    private static DBManager getInstance(String dbType, String redisMaster, String redisSentinels, String redisPassword,
                                          String mongoDBUri, String hazelcastClusterName, String hazelcastPassword,
                                          String host, String hazelcastClusterMembers, boolean useEmbeddedHazelcast) {
         lock.lock();
@@ -64,7 +64,7 @@ public class DBManagerFactory {
             if (dbManager == null) {
 
                 if ("redis".equalsIgnoreCase(dbType)) {
-                    dbManager = new RedisDBManager(redisMaster, redisSentinels);
+                    dbManager = new RedisDBManager(redisMaster, redisSentinels, redisPassword);
                 } else if ("mongodb".equalsIgnoreCase(dbType)) {
                     dbManager = new MongoDBManager(mongoDBUri);
                 } else {

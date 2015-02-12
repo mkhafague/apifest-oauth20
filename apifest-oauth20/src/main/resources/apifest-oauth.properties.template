@@ -13,6 +13,7 @@ mongodb.uri=
 
 redis.sentinels=
 redis.master=
+redis.password=
 
 hazelcast.cluster.name=
 hazelcast.password=

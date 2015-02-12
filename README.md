@@ -93,7 +93,9 @@ If MongoDB is used, define the mongo URI string in the following property in the
 
 e.g.
 
-```mongodb.uri = mongodb://host1:port1,host2:port2,...,hostN:portN/database?replicaSet=my_replica```
+```mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]```
+
+Username and password can optionally be set directly in the connection URI, find more documentation at http://docs.mongodb.org/manual/reference/connection-string/
 
 Unless overridden, the following default values are set for the connection: ```connectTimeoutMS=2000```
 
@@ -107,6 +109,10 @@ N.B: Redis code uses the SCAN command which requires 2.8.0+ versions
 You can define the name of Redis master in the following property in the apifest-oauth.properties file:
 
 ***redis.master***
+
+You can define the password of Redis in the following property in the apifest-oauth.properties file:
+
+***redis.password***
 
 * **Setup Hazelcast**
 If Hazelcast is used, you can use an embedded instance or connect to an external cluster
@@ -157,7 +163,7 @@ When the server is started, you will see:
 :------------- | :------------- | :-------------:
 | */oauth20/login* | logs an user using provided access_token and checking credentials against configured authenticator class to access restricted endpoints when running in production mode | :white_check_mark: |
 | */oauth20/applications* | registers client applications (POST method), returns all client applications info (GET method) | :white_check_mark: |
-| */oauth20/applications/[client_id]* | returns client application info (GET method), updates a client application (PUT method) | :white_check_mark: |
+| */oauth20/applications/[client_id]* | returns client application info (GET method), updates a client application (PUT method), deletes a client application (DELETE method) | :white_check_mark: |
 | */oauth20/auth-codes* | issues auth codes |
 | */oauth20/tokens* | issues access tokens |
 | */oauth20/tokens/validate* | validates access tokens |

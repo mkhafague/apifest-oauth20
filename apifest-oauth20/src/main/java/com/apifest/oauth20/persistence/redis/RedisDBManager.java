@@ -52,9 +52,13 @@ public class RedisDBManager implements DBManager {
     //private static String storeAuthCodeSHA;
 
     public RedisDBManager(String master, String sentinelsAsString) {
+        this(master, sentinelsAsString, null);
+    }
+
+    public RedisDBManager(String master, String sentinelsAsString, String password) {
         String[] sentinelsList = sentinelsAsString.split(",");
         Set<String> sentinels = new HashSet<String>(Arrays.asList(sentinelsList));
-        pool = new JedisSentinelPool(master, sentinels);
+        pool = password == null ? new JedisSentinelPool(master, sentinels) : new JedisSentinelPool(master, sentinels, password);
 
         //Jedis jedis = pool.getResource();
         //storeAuthCodeSHA = jedis.scriptLoad(storeAuthCodeScript);
