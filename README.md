@@ -92,13 +92,11 @@ If MongoDB is used, define the mongo URI string in the following property in the
 
 ***mongodb.uri***
 
-e.g.
+e.g. ```mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]```
 
-```mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]```
+Username and password can optionally be set in the connection URI, find more documentation at 
 
-Username and password can optionally be set in the connection URI, find more documentation at http://docs.mongodb.org/manual/reference/connection-string/
-
-Unless overridden, the following default values are set for the connection: ```connectTimeoutMS=2000```
+Unless overridden, the following default values are set for the connection: ```connectTimeoutMS=2000```  
 
 * **Setup Redis**
 
