@@ -52,12 +52,11 @@ public class MongoDBManager implements DBManager {
 
     protected static DB db;
 
-    protected static Logger log = LoggerFactory.getLogger(DBManager.class);
+    protected static Logger log = LoggerFactory.getLogger(MongoDBManager.class);
 
     protected static final String CLIENTS_COLLECTION_NAME = "clients";
     protected static final String CLIENTS_ID = "_id";
     protected static final String CLIENTS_CLIENTID = "clientId";
-    //protected static final String CLIENTS_NAME = "name";
 
     protected static final String AUTH_CODE_COLLECTION_NAME = "authCodes";
     protected static final String AUTH_CODE = "code";
@@ -70,10 +69,22 @@ public class MongoDBManager implements DBManager {
     protected static final String ACCESS_TOKEN_USER_ID = "userId";
 	
     protected static final String SCOPE_COLLECTION_NAME = "scopes";
-    //protected static final String SCOPE_NAME = "name";
 
     public MongoDBManager(String uri) {
         db = MongoUtil.getDB(uri);
+    }
+
+    public void addIndexes() {
+        BasicDBObject dbObject = new BasicDBObject();
+        dbObject.put(ACCESS_TOKEN_REFRESH_TOKEN_ID, 1);
+        dbObject.put(CLIENTS_CLIENTID, 1);
+        db.getCollection(ACCESS_TOKEN_COLLECTION_NAME).createIndex(dbObject);
+
+        dbObject = new BasicDBObject();
+        dbObject.put(ACCESS_TOKEN_USER_ID, 1);
+        dbObject.put(CLIENTS_CLIENTID, 1);
+        dbObject.put(ACCESS_TOKEN_VALID, 1);
+        db.getCollection(ACCESS_TOKEN_COLLECTION_NAME).createIndex(dbObject);
     }
 
     /*
@@ -101,11 +112,11 @@ public class MongoDBManager implements DBManager {
             ClientCredentials loadedCreds = ClientCredentials.loadFromMap(mapLoaded);
             log.debug(loadedCreds.getName());
             return loadedCreds;
-        } else {
-            return null;
         }
+
+        return null;
     }
-    
+
     /*
      * @see com.apifest.oauth20.DBManager#findClientCredentialsByName(java.lang.String)
      */
@@ -120,14 +131,15 @@ public class MongoDBManager implements DBManager {
             ClientCredentials loadedCreds = ClientCredentials.loadFromMap(mapLoaded);
             log.debug(loadedCreds.getName());
             return loadedCreds;
-        } else {
-            return null;
         }
+
+        return null;
     }
 
     /*
      * @see com.apifest.oauth20.persistence.DBManager#storeAuthCode(com.apifest.oauth20.AuthCode)
      */
+    // TODO: Set expiration time for auth code
     @Override
     public void storeAuthCode(AuthCode authCode) {
         try {
@@ -148,7 +160,7 @@ public class MongoDBManager implements DBManager {
         keys.put(ACCESS_TOKEN_REDIRECT_URI, redirectUri);
         keys.put(ACCESS_TOKEN_VALID, true);
         DBCursor list = db.getCollection(AUTH_CODE_COLLECTION_NAME).find(new BasicDBObject(keys));
-        while (list.hasNext()) {
+        if (list.hasNext()) {
             DBObject result = list.next();
             Map<String, Object> mapLoaded = result.toMap();
             AuthCode loadedAuthCode = AuthCode.loadFromMap(mapLoaded);
@@ -209,7 +221,6 @@ public class MongoDBManager implements DBManager {
     @Override
     public AccessToken findAccessTokenByRefreshToken(String refreshToken, String clientId) {
         BasicDBObject dbObject = new BasicDBObject();
-        // TODO: add indexes
         dbObject.put(ACCESS_TOKEN_REFRESH_TOKEN_ID, refreshToken);
         dbObject.put(CLIENTS_CLIENTID, clientId);
         // Searching for unknown validity token -> no VALID query param
@@ -225,9 +236,9 @@ public class MongoDBManager implements DBManager {
             AccessToken loadedAccessToken = AccessToken.loadFromMap(mapLoaded);
             log.debug(loadedAccessToken.getToken());
             return loadedAccessToken;
-        } else {
-            return null;
         }
+
+        return null;
     }
 
     /*
@@ -465,7 +476,6 @@ public class MongoDBManager implements DBManager {
     public List<AccessToken> getAccessTokenByUserIdAndClientApp(String userId, String clientId) {
         List<AccessToken> accessTokens = new ArrayList<AccessToken>();
         BasicDBObject dbObject = new BasicDBObject();
-        // TODO: add indexes
         dbObject.put(ACCESS_TOKEN_USER_ID, userId);
         dbObject.put(CLIENTS_CLIENTID, clientId);
         dbObject.put(ACCESS_TOKEN_VALID, true);

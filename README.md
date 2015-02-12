@@ -44,9 +44,10 @@ oauth20.subnets.whitelist=
 oauth20.keystore.path=  
 oauth20.keystore.password=  
 oauth20.database=  
-mongodb.uri=  
-redis.sentinels=  
-redis.master=  
+mongodb.uri=
+redis.master=
+redis.sentinels=
+redis.password=
 hazelcast.cluster.name=  
 hazelcast.password=  
 hazelcast.cluster.members=  
@@ -95,7 +96,7 @@ e.g.
 
 ```mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database][?options]]```
 
-Username and password can optionally be set directly in the connection URI, find more documentation at http://docs.mongodb.org/manual/reference/connection-string/
+Username and password can optionally be set in the connection URI, find more documentation at http://docs.mongodb.org/manual/reference/connection-string/
 
 Unless overridden, the following default values are set for the connection: ```connectTimeoutMS=2000```
 

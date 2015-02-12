@@ -50,10 +50,16 @@ public class DBManagerFactory {
     }
 
     public static DBManager init(OAuthServerContextBuilder builder) {
-        return getInstance(builder.getDatabaseType(), builder.getRedisMaster(),
+        getInstance(builder.getDatabaseType(), builder.getRedisMaster(),
                         builder.getRedisSentinels(), builder.getRedisPassword(), builder.getMongoDBUri(),
                         builder.getHazelcastClusterName(), builder.getHazelcastPassword(),
                         builder.getHost(), builder.getHazelcastClusterMembers(), builder.useEmbeddedHazelcast());
+
+        if ("mongodb".equalsIgnoreCase(builder.getDatabaseType())) {
+            ((MongoDBManager) dbManager).addIndexes();
+        }
+
+        return dbManager;
     }
 
     private static DBManager getInstance(String dbType, String redisMaster, String redisSentinels, String redisPassword,
