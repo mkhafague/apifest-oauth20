@@ -287,7 +287,7 @@ public final class OAuthServer {
             props.load(in);
             setHostAndPort(props, builder);
 
-            builder.setDatabaseType(props.getProperty("oauth20.database"));
+            builder.setDatabaseType(props.getProperty("oauth20.database", DBManagerFactory.DEFAULT_DB));
             builder.setRedisMaster(props.getProperty("redis.master"));
             builder.setRedisSentinels(props.getProperty("redis.sentinels"));
             builder.setRedisPassword(props.getProperty("redis.password"));
@@ -299,7 +299,6 @@ public final class OAuthServer {
 
             builder.setHazelcastClusterName(props.getProperty("hazelcast.cluster.name", HazelcastConfigFactory.HAZELCAST_GROUP_NAME));
 
-            // dev-pass is the default password used in Hazelcast
             builder.setHazelcastPassword(props.getProperty("hazelcast.password", GroupConfig.DEFAULT_GROUP_PASSWORD));
             builder.setHazelcastClusterMembers(props.getProperty("hazelcast.cluster.members"));
 

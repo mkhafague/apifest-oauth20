@@ -29,6 +29,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class DBManagerFactory {
 
+	public static final String REDIS_DB = "redis";
+	public static final String MONGO_DB = "mongodb";
+	public static final String DEFAULT_DB = "hazelcast";
+
     private static final ReentrantLock lock = new ReentrantLock();
     protected static volatile DBManager dbManager;
 
@@ -69,9 +73,9 @@ public class DBManagerFactory {
         try {
             if (dbManager == null) {
 
-                if ("redis".equalsIgnoreCase(dbType)) {
+                if (REDIS_DB.equalsIgnoreCase(dbType)) {
                     dbManager = new RedisDBManager(redisMaster, redisSentinels, redisPassword);
-                } else if ("mongodb".equalsIgnoreCase(dbType)) {
+                } else if (MONGO_DB.equalsIgnoreCase(dbType)) {
                     dbManager = new MongoDBManager(mongoDBUri);
                 } else {
                     dbManager = new HazelcastDBManager(hazelcastClusterName, hazelcastPassword,
