@@ -68,10 +68,10 @@ public class TokenRequest {
     public TokenRequest(HttpRequest request, Map<String, String> additionalParams) {
         String content = request.getContent().toString(CharsetUtil.UTF_8);
         Map<String, String> params = parseContent(content);
-        assignValues(params);
+        assignValues(request, params);
 
         if (additionalParams != null) {
-            assignValues(additionalParams);
+            assignValues(request, additionalParams);
         }
     }
 
@@ -92,12 +92,17 @@ public class TokenRequest {
         return params.get(key);
     }
 
-    private void assignValues(Map<String, String> params) {
+    private void assignValues(HttpRequest request, Map<String, String> params) {
         this.grantType = assignIfEmpty(this.grantType, params, GRANT_TYPE);
         this.code = assignIfEmpty(this.code, params, CODE);
         this.redirectUri = assignIfEmpty(this.redirectUri, params, REDIRECT_URI);
         this.clientId = assignIfEmpty(this.clientId, params,CLIENT_ID);
         this.clientSecret = assignIfEmpty(this.clientSecret, params, CLIENT_SECRET);
+        if (this.clientId == null && this.clientSecret == null) {
+            String[] clientCredentials = AuthorizationServer.getBasicAuthorizationClientCredentials(request);
+            this.clientId = clientCredentials[0];
+            this.clientSecret = clientCredentials[1];
+        }
         this.refreshToken = assignIfEmpty(this.refreshToken, params, REFRESH_TOKEN);
         this.scope = assignIfEmpty(this.scope, params, SCOPE);
         this.username = assignIfEmpty(this.username, params, USERNAME);
@@ -148,6 +153,11 @@ public class TokenRequest {
         if (clientId == null || clientId.isEmpty()) {
             TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
             err.setMessageParams(CLIENT_ID);
+            throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
+        }
+        if (clientSecret == null || clientSecret.isEmpty()) {
+            TokenError err = new TokenError(TokenErrorTypes.MANDATORY_PARAM_MISSING, state);
+            err.setMessageParams(CLIENT_SECRET);
             throw new OAuthException(err, HttpResponseStatus.BAD_REQUEST);
         }
         if (grantType == null || grantType.isEmpty()) {
