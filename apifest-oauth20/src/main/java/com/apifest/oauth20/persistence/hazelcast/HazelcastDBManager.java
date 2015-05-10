@@ -151,7 +151,7 @@ public class HazelcastDBManager implements DBManager {
     public void updateAccessTokenValidStatus(String accessToken, boolean valid) {
         PersistentAccessToken persistentAccessToken = getAccessTokenContainer().get(accessToken);
         persistentAccessToken.setValid(valid);
-        getAccessTokenContainer().put(accessToken, persistentAccessToken);
+        getAccessTokenContainer().put(accessToken, persistentAccessToken, Long.valueOf(persistentAccessToken.getRefreshExpiresIn()), TimeUnit.SECONDS);
     }
 
     /*
