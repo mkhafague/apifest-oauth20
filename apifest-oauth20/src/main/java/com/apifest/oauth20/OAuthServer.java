@@ -337,7 +337,7 @@ public final class OAuthServer {
 	        
 	        Scope foundScope = db.findScope("admin");
 	        
-	        if (foundScope == null) {
+	        if (foundScope == null || !foundScope.valid()) {
 	        	db.storeScope(adminScope);
 	        }
 
@@ -356,16 +356,12 @@ public final class OAuthServer {
             appInfo.setRedirectUri(uri.toString());
 	        appInfo.valid();
 	        
-	        ClientCredentials cc = db.findClientCredentials(appInfo.getId());
+	        ClientCredentials cc = db.findClientCredentialsByName(OAUTH2_SERVER_CLIENT_NAME);
 	        
-	        if (cc == null) {
+	        if (cc == null || cc.getStatus() != ClientCredentials.ACTIVE_STATUS) {
 	            cc = new ClientCredentials(appInfo.getName(), appInfo.getScope(), appInfo.getDescription(),
 	                    appInfo.getRedirectUri(), appInfo.getApplicationDetails());
-	
-	        	ClientCredentials foundCc = db.findClientCredentialsByName(OAUTH2_SERVER_CLIENT_NAME);
-	        	if (foundCc == null) {
-                    db.storeClientCredentials(cc);
-	        	}
+	            db.storeClientCredentials(cc);
 	        }
 
 	        Map<String, String> map = new HashMap<String, String>();
