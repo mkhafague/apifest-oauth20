@@ -39,6 +39,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 
 import com.apifest.oauth20.OAuthServerContext.OAuthServerContextBuilder;
+import com.apifest.oauth20.utils.MDCLogHandler;
+import com.apifest.oauth20.utils.MDCThreadPoolExecutor;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -106,8 +108,8 @@ public final class OAuthServer {
         context = builder.build();
         log.info("Successfully initialized "+context.getDatabaseType()+" database");
 
-        ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
-                Executors.newCachedThreadPool());
+        ChannelFactory factory = new NioServerSocketChannelFactory(MDCThreadPoolExecutor.newCachedThreadPool(),
+                MDCThreadPoolExecutor.newCachedThreadPool());
 
         if (context.isHttps()) {
         	log.info("Setting up secured https only mode ...");
@@ -121,6 +123,7 @@ public final class OAuthServer {
             @Override
             public ChannelPipeline getPipeline() {
                 ChannelPipeline pipeline = Channels.pipeline();
+                pipeline.addLast("loggingHelperHandler", new MDCLogHandler());
 
                 if (context.isHttps()) {
                     // Add SSL handler first to encrypt and decrypt everything.

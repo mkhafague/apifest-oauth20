@@ -13,3 +13,5 @@ apifest-oauth20/src/main/java/com/apifest/oauth20/security/LDAPUserAuthenticatio
 target/MANIFEST.MF
 *.project
 apifest-oauth20/src/main/resources/log4j.xml
+**/.idea/*
+
