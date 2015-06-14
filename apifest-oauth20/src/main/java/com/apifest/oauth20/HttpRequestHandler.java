@@ -103,7 +103,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 		if (productionMode) {
 			String addr = ((InetSocketAddress) ctx.getChannel().getRemoteAddress()).getAddress().getHostAddress();
 			
-			if (!allowedIPs.inRange(addr)) {
+			if (allowedIPs != null && !allowedIPs.inRange(addr)) {
 				log.info("Unauthorized access to "+rawUri+" from "+addr+" ...");
 				HttpResponse unauthorizedResponse = Response.createResponse(HttpResponseStatus.FORBIDDEN, "Unauthorized access");
 				throw new RestrictedAccessException(unauthorizedResponse);
@@ -126,7 +126,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 			}
 		}
 	}
-	
+
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) {
         final Channel channel = ctx.getChannel();
@@ -137,6 +137,9 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
             HttpMethod method = req.getMethod();
             String rawUri = req.getUri();
+            
+            log.info(method+" "+rawUri);
+            
             try {
                 URI u = new URI(rawUri);
                 rawUri = u.getRawPath();
@@ -233,7 +236,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
                 future.addListener(ChannelFutureListener.CLOSE);
             }
         } else {
-            log.info("write response here from the BE");
+            log.error("Unknown message type");
         }
     }
 
@@ -581,7 +584,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
     }
 
     protected HttpResponse handleDeleteClientApplication(HttpRequest req) {
-        HttpResponse response = null;
+        HttpResponse response;
         Matcher m = APPLICATION_PATTERN.matcher(req.getUri());
         if (m.find()) {
             String clientId = m.group(1);
@@ -656,7 +659,7 @@ public class HttpRequestHandler extends SimpleChannelUpstreamHandler {
 
     @Override
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
-		log.error("Error report", e.getCause());
+    	log.error("Error report", e.getCause());
 		e.getChannel().close();
-	}    
+	}
 }
