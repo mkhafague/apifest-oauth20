@@ -81,6 +81,9 @@ public final class OAuthServer {
     // expires_in in seconds for grant type client_credentials
     public static final int DEFAULT_CC_EXPIRES_IN = 1800;
 
+    // expires_in in seconds for refresh toekn
+    public static final int DEFAULT_REFRESH_EXPIRES_IN = 3600;
+
     public static final String OAUTH2_SERVER_CLIENT_NAME = "Oauth2Server";
 
     private static final ReentrantLock lock = new ReentrantLock();
@@ -337,6 +340,7 @@ public final class OAuthServer {
 	        adminScope.setDescription("Administration scope");
 	        adminScope.setPassExpiresIn(OAuthServer.DEFAULT_PASSWORD_EXPIRES_IN);
 	        adminScope.setCcExpiresIn(OAuthServer.DEFAULT_CC_EXPIRES_IN);
+            adminScope.setRefreshExpiresIn(OAuthServer.DEFAULT_REFRESH_EXPIRES_IN);
 	        
 	        Scope foundScope = db.findScope("admin");
 	        

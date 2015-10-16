@@ -67,6 +67,9 @@ public class TokenRequest {
 
     public TokenRequest(HttpRequest request, Map<String, String> additionalParams) {
         String content = request.getContent().toString(CharsetUtil.UTF_8);
+        if (content == null || "".equals(content))
+            content = request.getUri().substring(request.getUri().indexOf("?") + 1);
+
         Map<String, String> params = parseContent(content);
         assignValues(request, params);
 
